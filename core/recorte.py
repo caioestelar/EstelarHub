@@ -14,7 +14,7 @@ disponível no projeto para uso em futuras exportações.
 """
 
 import os
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
@@ -84,6 +84,7 @@ def recortar_camadas(
     projeto: QgsProject,
     camada_mascara: QgsVectorLayer,
     nomes_camadas: Iterable[str],
+    callback_progresso: Optional[Callable[[int, int, str], None]] = None,
 ) -> None:
     """Filtra (via setSubsetString) cada camada listada em `nomes_camadas`,
     mantendo apenas as feições que intersectam a área de estudo.
@@ -99,10 +100,18 @@ def recortar_camadas(
     if geometria_mascara is None:
         return
 
-    for nome_camada in nomes_camadas:
+    nomes_camadas = list(nomes_camadas)
+    total_camadas = len(nomes_camadas)
+
+    for indice, nome_camada in enumerate(nomes_camadas, start=1):
+        if callback_progresso:
+            callback_progresso(indice - 1, total_camadas, nome_camada)
+
         camadas = projeto.mapLayersByName(nome_camada)
 
         if not camadas:
+            if callback_progresso:
+                callback_progresso(indice, total_camadas, nome_camada)
             continue
 
         camada = camadas[0]
@@ -132,6 +141,12 @@ def recortar_camadas(
             # Uma camada com problema não deve interromper o recorte das
             # demais camadas da lista.
             continue
+        finally:
+            if callback_progresso:
+                callback_progresso(indice, total_camadas, nome_camada)
+
+    if total_camadas == 0 and callback_progresso:
+        callback_progresso(1, 1, "Nenhuma camada")
 
 
 def remover_feicoes_fora_da_area(

@@ -382,6 +382,7 @@ class JanelaProjeto(QDialog):
         grupo_layout.addWidget(self.cmb_obra, 1, 0)
 
         self.cmb_preset = QComboBox()
+        self.cmb_preset.setAccessibleName("Perfil rápido")
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
         self._carregar_preset_salvo()
@@ -396,10 +397,12 @@ class JanelaProjeto(QDialog):
         grupo_layout.addWidget(lbl_zona, 2, 1)
 
         self.cmb_tipo = QComboBox()
+        self.cmb_tipo.setAccessibleName("Tipo de projeto")
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
         grupo_layout.addWidget(self.cmb_tipo, 3, 0)
 
         self.cmb_zona = QComboBox()
+        self.cmb_zona.setAccessibleName("Zona UTM")
         self.cmb_zona.addItems(constants.ZONAS_UTM)
         self.cmb_zona.setCurrentText(
             self._variaveis_salvas.get("zona_utm") or "AUTOMÁTICO"
@@ -1083,7 +1086,7 @@ class JanelaProjeto(QDialog):
 
         self.arquivo = arquivo
         self.btn_kml.setText(helpers.nome_do_arquivo(arquivo))
-        self._atualizar_status(f"Arquivo carregado: {helpers.nome_do_arquivo(arquivo)}")
+        self._atualizar_estado_botao()
 
         try:
             core_preview.carregar_arquivo_preview(self, arquivo)

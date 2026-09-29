@@ -19,8 +19,8 @@ QDialog `JanelaProjeto`) é feita através de um objeto `dlg` já finalizado
 desacopladas (ver ui/janela_projeto.py).
 """
 
-from qgis.PyQt.QtCore import QTimer
-from qgis.PyQt.QtWidgets import QMessageBox, QProgressDialog
+from qgis.PyQt.QtCore import QTimer, Qt
+from qgis.PyQt.QtWidgets import QApplication, QMessageBox, QProgressDialog
 import os
 
 from qgis.core import (
@@ -86,6 +86,31 @@ def _atualizar_ponto_rotulo(projeto: QgsProject, centro) -> None:
         raise
 
 
+def _atualizar_progresso(
+    progresso: QProgressDialog,
+    valor: int,
+    mensagem: str,
+    verificar_cancelamento: bool = False,
+) -> None:
+    progresso.setRange(0, 100)
+    progresso.setLabelText(mensagem)
+    progresso.setValue(valor)
+    QApplication.processEvents()
+    if verificar_cancelamento and progresso.wasCanceled():
+        raise InterruptedError("Geração cancelada pelo usuário.")
+
+
+def _callback_progresso_recorte(progresso, inicio: int, fim: int):
+    def atualizar(indice: int, total: int, nome_camada: str) -> None:
+        proporcao = indice / total if total else 1
+        valor = inicio + round((fim - inicio) * proporcao)
+        _atualizar_progresso(
+            progresso, valor, f"Recortando camada: {nome_camada}..."
+        )
+
+    return atualizar
+
+
 def gerar_projeto(dlg) -> bool:
     """Executa todo o fluxo de geração/configuração do projeto a partir dos
     dados preenchidos e confirmados na `JanelaProjeto`.
@@ -116,33 +141,49 @@ def gerar_projeto(dlg) -> bool:
         QMessageBox.warning(dlg, constants.NOME_PLUGIN, "Selecione uma pasta válida para salvar o projeto.")
         return False
 
+    progresso = None
     try:
         # 1) Copia as bases para a pasta do projeto e usa apenas as cópias.
         progresso = QProgressDialog(
-            "Preparando uma cópia local das bases...",
+            "Copiando as bases locais para o projeto...",
             "Cancelar cópia",
             0,
             0,
             dlg.parentWidget(),
         )
         progresso.setWindowTitle(constants.NOME_PLUGIN)
+        progresso.setWindowModality(Qt.WindowModality.WindowModal)
         progresso.setMinimumDuration(0)
         progresso.setAutoClose(False)
+        progresso.setAutoReset(False)
         progresso.show()
-        try:
-            pasta_bases = carregar_bases.copiar_bases_para_projeto(
-                pasta_projeto, progresso
-            )
-        finally:
-            progresso.close()
+        _atualizar_progresso(
+            progresso,
+            0,
+            "Copiando as bases locais para o projeto...",
+            verificar_cancelamento=True,
+        )
+        pasta_bases = carregar_bases.copiar_bases_para_projeto(
+            pasta_projeto, progresso
+        )
+        _atualizar_progresso(
+            progresso,
+            10,
+            "Bases copiadas. Preparando o projeto...",
+            verificar_cancelamento=True,
+        )
+        progresso.setCancelButton(None)
 
+        _atualizar_progresso(progresso, 15, "Carregando as bases locais no projeto...")
         carregar_bases.carregar_bases_estelar(pasta_bases)
 
         # 2) Carrega os layouts do template e aplica o prefixo da obra.
+        _atualizar_progresso(progresso, 30, "Carregando e configurando os layouts...")
         layouts.carregar_layouts_estelar()
         layouts.renomear_layouts(projeto, obra)
 
         # 3) Importa o KML/KMZ como camada definitiva do empreendimento.
+        _atualizar_progresso(progresso, 40, "Importando o arquivo do empreendimento...")
         camada = kml.importar_camada(arquivo, obra)
         projeto.addMapLayer(camada)
 
@@ -154,6 +195,7 @@ def gerar_projeto(dlg) -> bool:
         ponto_origem = geom.centroid().asPoint()
 
         # 3) Zona UTM automática, se aplicável.
+        _atualizar_progresso(progresso, 52, "Calculando a localização do empreendimento...")
         if zona_utm == "AUTOMÁTICO":
             zona_utm = municipios.calcular_zona_utm(ponto_origem)
 
@@ -163,9 +205,11 @@ def gerar_projeto(dlg) -> bool:
             projeto.setCrs(QgsCoordinateReferenceSystem(epsg))
 
         # 5) Descobre município/UF automaticamente.
+        _atualizar_progresso(progresso, 62, "Identificando município e UF...")
         municipio, uf = municipios.descobrir_municipio(projeto, geom)
 
         # 6) Calcula as escalas finais dos 3 layouts.
+        _atualizar_progresso(progresso, 70, "Aplicando as escalas dos layouts...")
         escala_001 = helpers.calcular_escala(
             dlg.spin_001.value(), **_ref("001"))
         escala_002 = helpers.calcular_escala(
@@ -208,16 +252,33 @@ def gerar_projeto(dlg) -> bool:
         #    preview (rb_500) e a usa como máscara para recorte de rios,
         #    municípios e estradas.
         if hasattr(dlg, "rb_500") and hasattr(dlg, "camada_preview"):
+            _atualizar_progresso(progresso, 78, "Preparando a área de estudo...")
             geometria_area_estudo = dlg.rb_500.asGeometry()
             area_estudo = recorte.criar_area_estudo(
                 projeto, geometria_area_estudo, dlg.camada_preview.crs()
             )
 
-            recorte.recortar_camadas(projeto, area_estudo, constants.LAYERS_RIOS)
-            recorte.recortar_camadas(projeto, area_estudo, [constants.LAYER_MUNICIPIOS])
-            recorte.recortar_camadas(projeto, area_estudo, constants.LAYERS_ESTRADAS)
+            recorte.recortar_camadas(
+                projeto,
+                area_estudo,
+                constants.LAYERS_RIOS,
+                _callback_progresso_recorte(progresso, 80, 84),
+            )
+            recorte.recortar_camadas(
+                projeto,
+                area_estudo,
+                [constants.LAYER_MUNICIPIOS],
+                _callback_progresso_recorte(progresso, 84, 86),
+            )
+            recorte.recortar_camadas(
+                projeto,
+                area_estudo,
+                constants.LAYERS_ESTRADAS,
+                _callback_progresso_recorte(progresso, 86, 92),
+            )
 
         # 10) Move o ponto de rótulo da usina para o centróide do empreendimento.
+        _atualizar_progresso(progresso, 94, "Salvando o projeto...")
         _atualizar_ponto_rotulo(projeto, geom.centroid())
 
         caminho_projeto = os.path.join(pasta_projeto, f"{obra}.qgz")
@@ -225,15 +286,31 @@ def gerar_projeto(dlg) -> bool:
         if not projeto.write():
             raise OSError(f"Não foi possível salvar o projeto em: {caminho_projeto}")
 
+        _atualizar_progresso(progresso, 100, "Geração concluída.")
+        progresso.close()
         QMessageBox.information(
             dlg, constants.NOME_PLUGIN,
             f"Projeto configurado e salvo em:\n{caminho_projeto}"
         )
         return True
 
+    except InterruptedError:
+        if progresso is not None:
+            progresso.close()
+        QMessageBox.information(
+            dlg.parentWidget() or dlg,
+            constants.NOME_PLUGIN,
+            "Cópia cancelada. Arquivos já copiados podem permanecer na subpasta BASES.",
+        )
+        return False
     except Exception as erro:  # noqa: BLE001 - tratamento de erro amplo e intencional (req. 12)
+        if progresso is not None:
+            progresso.close()
         QMessageBox.critical(dlg, "Erro ao gerar projeto", str(erro))
         return False
+    finally:
+        if progresso is not None:
+            progresso.close()
 
 
 def _ref(chave: str) -> dict:

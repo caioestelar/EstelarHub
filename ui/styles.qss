@@ -184,7 +184,8 @@ QPushButton:pressed {
 }
 
 QPushButton:focus,
-QTabBar::tab:focus {
+QTabBar::tab:focus,
+QCheckBox:focus {
     border: 2px solid #f9620f;
 }
 
