@@ -245,7 +245,8 @@ QTabBar::tab:hover {
     font-size: 8.5pt;
 }
 
-#btnClose {
+#btnClose,
+#btnMinimize {
     background-color: #2d373d;
     color: #dfe7ea;
     border: 1px solid #4d5a60;
@@ -256,7 +257,8 @@ QTabBar::tab:hover {
     min-height: 26px;
 }
 
-#btnClose:hover {
+#btnClose:hover,
+#btnMinimize:hover {
     background-color: #3b4d55;
     color: #ffffff;
 }
