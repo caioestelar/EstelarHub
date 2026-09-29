@@ -409,13 +409,13 @@ class JanelaProjeto(QDialog):
         self.chk_modo_avancado.toggled.connect(self._alternar_modo_avancado)
         grupo_layout.addWidget(self.chk_modo_avancado, 4, 0, 1, 2)
 
-        lbl_proj = QLabel("Sigla projetista")
-        lbl_proj.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_proj, 5, 0)
+        self.lbl_sigla_projetista = QLabel("Sigla projetista")
+        self.lbl_sigla_projetista.setObjectName("fieldLabel")
+        grupo_layout.addWidget(self.lbl_sigla_projetista, 5, 0)
 
-        lbl_verif = QLabel("Sigla verificação")
-        lbl_verif.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_verif, 5, 1)
+        self.lbl_sigla_verificacao = QLabel("Sigla verificação")
+        self.lbl_sigla_verificacao.setObjectName("fieldLabel")
+        grupo_layout.addWidget(self.lbl_sigla_verificacao, 5, 1)
 
         self.txt_sigla_projetista = QLineEdit()
         self.txt_sigla_projetista.setPlaceholderText("Ex.: CCC")
@@ -801,6 +801,10 @@ class JanelaProjeto(QDialog):
         layout.addLayout(botoes)
 
     def _alternar_modo_avancado(self, ativado: bool) -> None:
+        if hasattr(self, "lbl_sigla_projetista"):
+            self.lbl_sigla_projetista.setVisible(ativado)
+        if hasattr(self, "lbl_sigla_verificacao"):
+            self.lbl_sigla_verificacao.setVisible(ativado)
         if hasattr(self, "txt_sigla_projetista"):
             self.txt_sigla_projetista.setVisible(ativado)
         if hasattr(self, "txt_sigla_verificacao"):

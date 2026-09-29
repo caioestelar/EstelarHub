@@ -268,6 +268,12 @@ QTabBar::tab:hover {
     background-color: #ff7a2c;
 }
 
+#btnGerar:disabled {
+    background-color: #303b50;
+    color: #8b96a8;
+    border: 1px solid #43506a;
+}
+
 #previewInfo {
     color: #e4eeee;
     background-color: rgba(23, 29, 33, 200);
