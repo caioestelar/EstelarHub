@@ -66,6 +66,45 @@ class AbaHover(QTabWidget):
         super().mouseMoveEvent(event)
 
 
+class BarraTitulo(QWidget):
+    """Barra personalizada que permite arrastar a janela sem moldura."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._posicao_arraste = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            posicao_global = self._posicao_global(event)
+            self._posicao_arraste = posicao_global - self.window().frameGeometry().topLeft()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if (
+            self._posicao_arraste is not None
+            and event.buttons() & Qt.MouseButton.LeftButton
+        ):
+            self.window().move(self._posicao_global(event) - self._posicao_arraste)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._posicao_arraste = None
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    @staticmethod
+    def _posicao_global(event):
+        if hasattr(event, "globalPosition"):
+            return event.globalPosition().toPoint()
+        return event.globalPos()
+
+
 class JanelaProjeto(QDialog):
     """Diálogo de configuração do template de mapa de localização."""
 
@@ -108,9 +147,7 @@ class JanelaProjeto(QDialog):
 
         self.setWindowTitle(constants.NOME_PLUGIN)
         self.setWindowFlags(
-            Qt.WindowType.Dialog
-            | Qt.WindowType.WindowMinimizeButtonHint
-            | Qt.WindowType.WindowCloseButtonHint
+            Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
         self.resize(760, 760)
         self.setMinimumSize(680, 680)
@@ -244,23 +281,27 @@ class JanelaProjeto(QDialog):
             "logo.png"
         )
 
-        logo = QLabel()
+        barra = BarraTitulo()
+        barra.setObjectName("titleBar")
+        barra.setMinimumHeight(58)
+        cabecalho = QHBoxLayout(barra)
+        cabecalho.setContentsMargins(10, 4, 8, 4)
+        cabecalho.setSpacing(10)
 
-        cabecalho = QHBoxLayout()
-        cabecalho.setContentsMargins(4, 0, 4, 8)
-        cabecalho.setSpacing(12)
+        logo = QLabel()
+        logo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         pixmap = QPixmap(caminho_logo)
         if not pixmap.isNull():
             logo.setPixmap(
                 pixmap.scaled(
-                    72,
-                    60,
+                    48,
+                    48,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 )
             )
-            logo.setFixedSize(78, 64)
+            logo.setFixedSize(52, 48)
             logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
             cabecalho.addWidget(logo)
 
@@ -269,16 +310,32 @@ class JanelaProjeto(QDialog):
 
         titulo = QLabel(constants.NOME_PLUGIN)
         titulo.setObjectName("dialogTitle")
+        titulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         subtitulo = QLabel("Template de Mapa de Localização")
         subtitulo.setObjectName("dialogSubtitle")
+        subtitulo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         textos.addWidget(titulo)
         textos.addWidget(subtitulo)
         cabecalho.addLayout(textos)
         cabecalho.addStretch()
 
-        layout.addLayout(cabecalho)
+        self.btn_minimizar = QPushButton("−")
+        self.btn_minimizar.setObjectName("btnMinimize")
+        self.btn_minimizar.setFixedSize(30, 30)
+        self.btn_minimizar.setToolTip("Minimizar janela")
+        self.btn_minimizar.clicked.connect(self.showMinimized)
+        cabecalho.addWidget(self.btn_minimizar)
+
+        self.btn_fechar = QPushButton("×")
+        self.btn_fechar.setObjectName("btnClose")
+        self.btn_fechar.setFixedSize(30, 30)
+        self.btn_fechar.setToolTip("Fechar janela")
+        self.btn_fechar.clicked.connect(self.reject)
+        cabecalho.addWidget(self.btn_fechar)
+
+        layout.addWidget(barra)
 
         divisor = QFrame()
         divisor.setObjectName("headerDivider")

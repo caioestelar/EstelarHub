@@ -30,13 +30,12 @@ QLabel {
 
 #dialogTitle {
     color: #f3f6f6;
-    font-size: 14pt;
+    font-size: 12pt;
     font-weight: bold;
-    letter-spacing: 0.2px;
 }
 
 #dialogSubtitle {
-    color: #9eafb5;
+    color: #9fb5e8;
     font-size: 9.5pt;
 }
 
@@ -44,6 +43,34 @@ QLabel {
     max-height: 1px;
     border: none;
     background-color: #414b52;
+}
+
+#titleBar {
+    background-color: #1b2327;
+    border: 1px solid #1e49b1;
+    border-left: 3px solid #f9620f;
+    border-radius: 6px;
+}
+
+#btnMinimize,
+#btnClose {
+    background-color: #2d373d;
+    color: #e5ecee;
+    border: 1px solid #4d5a60;
+    border-radius: 5px;
+    font-size: 13pt;
+    font-weight: bold;
+    padding: 0;
+}
+
+#btnMinimize:hover {
+    background-color: #294887;
+    border-color: #5278d1;
+}
+
+#btnClose:hover {
+    background-color: #f9620f;
+    border-color: #ff8a4a;
 }
 
 QLineEdit,
@@ -60,8 +87,8 @@ QDoubleSpinBox {
 QLineEdit:focus,
 QComboBox:focus,
 QDoubleSpinBox:focus {
-    border: 1px solid #55b8aa;
-    background-color: #343f43;
+    border: 1px solid #1e49b1;
+    background-color: #30394a;
 }
 
 QSlider::groove:horizontal {
@@ -71,7 +98,7 @@ QSlider::groove:horizontal {
 }
 
 QSlider::sub-page:horizontal {
-    background-color: #43a99d;
+    background-color: #1e49b1;
     border-radius: 3px;
 }
 
@@ -79,18 +106,18 @@ QSlider::handle:horizontal {
     width: 16px;
     margin: -6px 0;
     background-color: #edf4f3;
-    border: 2px solid #43a99d;
+    border: 2px solid #f9620f;
     border-radius: 8px;
 }
 
 QSlider::handle:horizontal:hover {
-    background-color: #8bd4c8;
+    background-color: #ffd0b5;
 }
 
 QPushButton {
-    background-color: #39434a;
+    background-color: #303b50;
     color: white;
-    border: 1px solid #536068;
+    border: 1px solid #435b91;
     border-radius: 6px;
     padding: 8px 12px;
     font-weight: 600;
@@ -98,11 +125,11 @@ QPushButton {
 }
 
 QPushButton:hover {
-    background-color: #46535b;
+    background-color: #3a4f78;
 }
 
 QPushButton:pressed {
-    background-color: #30383e;
+    background-color: #243146;
 }
 
 QPushButton:disabled {
@@ -124,7 +151,7 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 10px;
     padding: 0 7px;
-    color: #72c8bb;
+    color: #ff8a4a;
     font-weight: bold;
 }
 
@@ -148,9 +175,10 @@ QTabBar::tab {
 }
 
 QTabBar::tab:selected {
-    background-color: #3f9f95;
+    background-color: #1e49b1;
     color: white;
     font-weight: bold;
+    border-bottom: 2px solid #f9620f;
 }
 
 QTabBar::tab:hover {
@@ -160,8 +188,8 @@ QTabBar::tab:hover {
 #statusInfo {
     color: #d9e5e6;
     background-color: #232c30;
-    border: 1px solid #3e5756;
-    border-left: 3px solid #43a99d;
+    border: 1px solid #3e4e70;
+    border-left: 3px solid #f9620f;
     border-radius: 5px;
     padding: 7px 9px;
 }
@@ -172,34 +200,34 @@ QTabBar::tab:hover {
 }
 
 #btnReset {
-    background-color: #2e383d;
-    color: #f1c7c5;
-    border: 1px solid #5b4545;
+    background-color: #2b3444;
+    color: #ffc19e;
+    border: 1px solid #a84f20;
     font-weight: 600;
 }
 
 #btnReset:hover {
-    background-color: #3a474d;
+    background-color: #3b4659;
 }
 
 #btnGerar {
-    background-color: #1f8f6d;
+    background-color: #f9620f;
     color: white;
     font-size: 10.5pt;
     min-height: 40px;
-    border: 1px solid #2fa77c;
+    border: 1px solid #ff8a4a;
     font-weight: 700;
 }
 
 #btnGerar:hover {
-    background-color: #2ca779;
+    background-color: #ff7a2c;
 }
 
 #previewInfo {
     color: #e4eeee;
     background-color: rgba(23, 29, 33, 200);
     border: 1px solid rgba(64, 80, 79, 220);
-    border-left: 3px solid #43a99d;
+    border-left: 3px solid #1e49b1;
     border-radius: 6px;
     padding: 7px 9px;
     font-size: 8.2pt;
@@ -225,9 +253,9 @@ QTabBar::tab:hover {
 #scaleValue {
     min-width: 112px;
     padding: 4px 8px;
-    color: #9de0d5;
-    background-color: #303b3d;
-    border: 1px solid #4d6965;
+    color: #ffd0b5;
+    background-color: #293753;
+    border: 1px solid #1e49b1;
     border-radius: 4px;
     font-weight: bold;
     font-size: 8.5pt;
@@ -316,7 +344,7 @@ QTabBar::tab:hover {
 }
 
 #generationStepNumber[state="active"] {
-    background-color: #43a99d;
+    background-color: #f9620f;
     color: white;
 }
 
@@ -332,7 +360,7 @@ QTabBar::tab:hover {
 }
 
 #generationStepText[state="active"] {
-    color: #c7f3eb;
+    color: #ffb183;
 }
 
 #generationStepText[state="done"] {
@@ -350,7 +378,7 @@ QProgressBar {
 }
 
 QProgressBar::chunk {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #50b8a6, stop:1 #2f9d8e);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1e49b1, stop:1 #f9620f);
     border-radius: 1px;
 }
 
