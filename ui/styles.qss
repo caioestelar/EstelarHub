@@ -245,24 +245,6 @@ QTabBar::tab:hover {
     font-size: 8.5pt;
 }
 
-#btnClose,
-#btnMinimize {
-    background-color: #2d373d;
-    color: #dfe7ea;
-    border: 1px solid #4d5a60;
-    border-radius: 13px;
-    font-size: 9.5pt;
-    font-weight: bold;
-    min-width: 26px;
-    min-height: 26px;
-}
-
-#btnClose:hover,
-#btnMinimize:hover {
-    background-color: #3b4d55;
-    color: #ffffff;
-}
-
 #mapOverlay {
     background: transparent;
 }

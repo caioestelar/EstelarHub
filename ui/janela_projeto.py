@@ -108,7 +108,9 @@ class JanelaProjeto(QDialog):
 
         self.setWindowTitle(constants.NOME_PLUGIN)
         self.setWindowFlags(
-            Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
+            Qt.WindowType.Dialog
+            | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowCloseButtonHint
         )
         self.resize(760, 760)
         self.setMinimumSize(680, 680)
@@ -275,19 +277,6 @@ class JanelaProjeto(QDialog):
         textos.addWidget(subtitulo)
         cabecalho.addLayout(textos)
         cabecalho.addStretch()
-
-        self.btn_minimizar = QPushButton("−")
-        self.btn_minimizar.setObjectName("btnMinimize")
-        self.btn_minimizar.setFixedSize(26, 26)
-        self.btn_minimizar.setToolTip("Minimizar janela")
-        self.btn_minimizar.clicked.connect(self.showMinimized)
-        cabecalho.addWidget(self.btn_minimizar)
-
-        self.btn_fechar = QPushButton("✕")
-        self.btn_fechar.setObjectName("btnClose")
-        self.btn_fechar.setFixedSize(26, 26)
-        self.btn_fechar.clicked.connect(self.reject)
-        cabecalho.addWidget(self.btn_fechar)
 
         layout.addLayout(cabecalho)
 
