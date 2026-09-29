@@ -1,0 +1,25 @@
+[general]
+name=EstelarMapTools
+qgisMinimumVersion=4.0
+qgisMaximumVersion=4.99
+description=Automatiza a padronização dos desenhos (mapa de localização, layouts e camadas) da Estelar Engenharia.
+version=1.0.0
+author=CaioChiarello/ESTELAR ENGENHARIA ASSOCIADOS
+email=caio@estelarengenharia.com.br
+
+about=Ambiente de desenvolvimento.
+
+tracker=https://github.com/caioestelar/EstelarMapTools/issues
+repository=https://github.com/caioestelar/EstelarMapTools.git
+# homepage=https://github.com/caioestelar/EstelarMapTools.git
+
+tags=python,template,layout,kml,kmz,municipio,utm,sirgas
+
+category=Plugins
+icon=icon.png
+
+experimental=False
+deprecated=False
+
+server=False
+hasProcessingProvider=no
