@@ -91,6 +91,12 @@ QDoubleSpinBox:focus {
     background-color: #30394a;
 }
 
+QLineEdit[validationState="missing"],
+QComboBox[validationState="missing"],
+QPushButton[validationState="missing"] {
+    border: 2px solid #f9620f;
+}
+
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
@@ -177,6 +183,11 @@ QPushButton:pressed {
     background-color: #243146;
 }
 
+QPushButton:focus,
+QTabBar::tab:focus {
+    border: 2px solid #f9620f;
+}
+
 QPushButton:disabled {
     color: #7d898e;
     background-color: #30363b;
@@ -241,7 +252,12 @@ QTabBar::tab:hover {
 
 #destinationHint {
     color: #9eafb5;
-    font-size: 8pt;
+    font-size: 9pt;
+}
+
+#footerNote {
+    color: #aeb9bd;
+    font-size: 9pt;
 }
 
 #btnReset {
