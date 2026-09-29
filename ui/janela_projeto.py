@@ -13,8 +13,10 @@ princípio de separação de responsabilidades pedido na reestruturação do
 plugin.
 """
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QSettings
 from qgis.PyQt.QtWidgets import (
+    QApplication,
+    QCheckBox,
     QComboBox,
     QCompleter,
     QDialog,
@@ -31,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
     QProgressBar,
     QScrollArea,
     QSlider,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
     QTabWidget
@@ -85,12 +88,12 @@ class JanelaProjeto(QDialog):
             )
 
         self.arquivo = ""
+        self.settings = QSettings()
+        self.ultimo_projeto_gerado = None
         self._preview_dados = {
             "obra": "-", "tipo": "-", "municipio": "-",
             "uf": "-", "zona_utm": "-", "area": "-",
         }
-<<<<<<< Updated upstream
-=======
         self._estilo_mapa = self.settings.value("EstelarTemplate/ultimo_estilo_mapa", "satelite", type=str)
         self._presets = {
             "Padrão": {"tipo": "PCH", "zona": "AUTOMÁTICO"},
@@ -99,7 +102,6 @@ class JanelaProjeto(QDialog):
             "UFV": {"tipo": "UFV", "zona": "AUTOMÁTICO"},
             "Personalizado": {"tipo": "OUTRO", "zona": "AUTOMÁTICO"},
         }
->>>>>>> Stashed changes
 
         projeto = QgsProject.instance()
         self._variaveis_salvas = core_variaveis.carregar_variaveis(projeto)
@@ -180,8 +182,6 @@ class JanelaProjeto(QDialog):
             resumo_layout.addWidget(label)
         resumo.setLayout(resumo_layout)
         layout_config.addWidget(resumo)
-<<<<<<< Updated upstream
-=======
 
         self.resumo_geracao = QGroupBox("Resumo da geração")
         self.resumo_geracao.setObjectName("summaryPanel")
@@ -201,8 +201,6 @@ class JanelaProjeto(QDialog):
         self.log_geracao.setObjectName("logPanel")
         self._adicionar_log("Sistema pronto. Aguardando a geração do projeto.")
         layout_config.addWidget(self.log_geracao)
-
->>>>>>> Stashed changes
         aba_config.setLayout(layout_config)
 
         # ==========================
@@ -219,11 +217,8 @@ class JanelaProjeto(QDialog):
 
         # Botões ficam fora das abas
         self._construir_botoes(layout_principal)
-<<<<<<< Updated upstream
-=======
         self._carregar_configuracao_destino()
         self._aplicar_preset("Padrão")
->>>>>>> Stashed changes
         self._atualizar_estado_botao()
 
         self._construir_rodape(layout_principal)
@@ -326,14 +321,6 @@ class JanelaProjeto(QDialog):
             self.cmb_obra.setItemData(indice, sigla)
         grupo_layout.addWidget(self.cmb_obra, 1, 0)
 
-<<<<<<< Updated upstream
-        for sigla, nome in sorted(constants.OBRAS.items()):
-            self.cmb_obra.addItem(f"{sigla} - {nome}", sigla)
-
-        grupo_layout.addWidget(self.cmb_obra)
-
-        grupo_layout.addWidget(QLabel("Tipo de projeto"))
-=======
         self.cmb_preset = QComboBox()
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
@@ -347,7 +334,6 @@ class JanelaProjeto(QDialog):
         lbl_zona = QLabel("Zona UTM")
         lbl_zona.setObjectName("fieldLabel")
         grupo_layout.addWidget(lbl_zona, 2, 1)
->>>>>>> Stashed changes
 
         self.cmb_tipo = QComboBox()
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
@@ -365,9 +351,6 @@ class JanelaProjeto(QDialog):
         self.cmb_tipo.currentIndexChanged.connect(self._atualizar_preview)
         self.cmb_tipo.currentIndexChanged.connect(self._atualizar_estado_botao)
 
-<<<<<<< Updated upstream
-        grupo_layout.addWidget(QLabel("Sigla projetista"))
-=======
         self.chk_modo_avancado = QCheckBox("Modo avançado")
         self.chk_modo_avancado.toggled.connect(self._alternar_modo_avancado)
         grupo_layout.addWidget(self.chk_modo_avancado, 4, 0, 1, 2)
@@ -380,7 +363,6 @@ class JanelaProjeto(QDialog):
         lbl_verif.setObjectName("fieldLabel")
         grupo_layout.addWidget(lbl_verif, 5, 1)
 
->>>>>>> Stashed changes
         self.txt_sigla_projetista = QLineEdit()
         self.txt_sigla_projetista.setPlaceholderText("Ex.: CCC")
         grupo_layout.addWidget(self.txt_sigla_projetista, 6, 0)
@@ -389,11 +371,8 @@ class JanelaProjeto(QDialog):
         self.txt_sigla_verificacao.setPlaceholderText("Ex.: JRM")
         grupo_layout.addWidget(self.txt_sigla_verificacao, 6, 1)
 
-<<<<<<< Updated upstream
-=======
         self._alternar_modo_avancado(False)
 
->>>>>>> Stashed changes
         grupo_projeto.setLayout(grupo_layout)
         layout.addWidget(grupo_projeto)
 
@@ -426,8 +405,6 @@ class JanelaProjeto(QDialog):
         self.btn_pasta_projeto = QPushButton("Selecionar pasta...")
         self.btn_pasta_projeto.clicked.connect(self._selecionar_pasta_projeto)
         linha_destino.addWidget(self.btn_pasta_projeto)
-<<<<<<< Updated upstream
-=======
 
         self.btn_abrir_pasta_projeto = QPushButton("Abrir pasta")
         self.btn_abrir_pasta_projeto.clicked.connect(self._abrir_pasta_projeto)
@@ -444,7 +421,6 @@ class JanelaProjeto(QDialog):
 
         self.btn_copiar_caminho.setEnabled(bool(self.txt_pasta_projeto.text().strip()))
         self.btn_abrir_projeto.setEnabled(bool(self.ultimo_projeto_gerado and os.path.isfile(self.ultimo_projeto_gerado)))
->>>>>>> Stashed changes
         layout_destino.addLayout(linha_destino)
 
         dica_destino = QLabel(
@@ -770,8 +746,6 @@ class JanelaProjeto(QDialog):
 
         layout.addLayout(botoes)
 
-<<<<<<< Updated upstream
-=======
     def _alternar_modo_avancado(self, ativado: bool) -> None:
         if hasattr(self, "txt_sigla_projetista"):
             self.txt_sigla_projetista.setVisible(ativado)
@@ -779,7 +753,8 @@ class JanelaProjeto(QDialog):
             self.txt_sigla_verificacao.setVisible(ativado)
         if hasattr(self, "cmb_preset"):
             self.cmb_preset.setVisible(not ativado)
-        self._atualizar_estado_botao()
+        if hasattr(self, "btn_ok"):
+            self._atualizar_estado_botao()
 
     def _carregar_preset_salvo(self) -> None:
         preset_salvo = self.settings.value("EstelarTemplate/ultimo_preset", "Padrão", type=str)
@@ -807,7 +782,6 @@ class JanelaProjeto(QDialog):
         if self.cmb_zona.findText(zona) >= 0:
             self.cmb_zona.setCurrentText(zona)
 
->>>>>>> Stashed changes
     def _atualizar_estado_botao(self) -> None:
         projeto_ok = bool(self.cmb_obra.currentData()) or bool(self.cmb_obra.currentText().strip())
         arquivo_ok = bool(self.arquivo)
@@ -825,8 +799,6 @@ class JanelaProjeto(QDialog):
         else:
             self.lbl_status.setText("Nenhum arquivo importado")
 
-<<<<<<< Updated upstream
-=======
         self._atualizar_fluxo_geracao()
         self._atualizar_resumo_geracao()
 
@@ -903,7 +875,6 @@ class JanelaProjeto(QDialog):
         except Exception as erro:
             QMessageBox.critical(self, "Erro ao abrir projeto", str(erro))
 
->>>>>>> Stashed changes
     def _atualizar_status(self, mensagem: str = None) -> None:
         if mensagem is None:
             mensagem = (
@@ -955,6 +926,7 @@ class JanelaProjeto(QDialog):
         )
         if pasta:
             self.txt_pasta_projeto.setText(pasta)
+            self._salvar_configuracao_destino()
 
     def _resetar_template(self) -> None:
         resposta = QMessageBox.question(
