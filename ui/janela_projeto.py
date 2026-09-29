@@ -128,6 +128,7 @@ class JanelaProjeto(QDialog):
 
         self.arquivo = ""
         self.settings = QSettings()
+        self._restaurando_estado = True
         self.ultimo_projeto_gerado = None
         self._preview_dados = {
             "obra": "-", "tipo": "-", "municipio": "-",
@@ -257,7 +258,7 @@ class JanelaProjeto(QDialog):
         # Botões ficam fora das abas
         self._construir_botoes(layout_principal)
         self._carregar_configuracao_destino()
-        self._aplicar_preset("Padrão")
+        self._restaurar_estado_formulario()
         self._atualizar_estado_botao()
 
         self._construir_rodape(layout_principal)
@@ -351,9 +352,9 @@ class JanelaProjeto(QDialog):
         grupo_layout.setHorizontalSpacing(10)
         grupo_layout.setVerticalSpacing(8)
 
-        lbl_obra = QLabel("Nome da obra")
-        lbl_obra.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_obra, 0, 0)
+        self.lbl_obra = QLabel("Nome da obra *")
+        self.lbl_obra.setObjectName("fieldLabel")
+        grupo_layout.addWidget(self.lbl_obra, 0, 0)
 
         lbl_preset = QLabel("Perfil rápido")
         lbl_preset.setObjectName("fieldLabel")
@@ -363,6 +364,10 @@ class JanelaProjeto(QDialog):
         self.cmb_obra.setEditable(True)
         self.cmb_obra.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.cmb_obra.setPlaceholderText("Selecione ou digite a obra")
+        self.cmb_obra.setAccessibleName("Nome da obra")
+        self.cmb_obra.setAccessibleDescription(
+            "Obrigatório. Selecione uma obra cadastrada ou digite um nome."
+        )
         opcoes_obra = [f"{sigla} - {nome}" for sigla, nome in sorted(constants.OBRAS.items())]
         for texto in opcoes_obra:
             self.cmb_obra.addItem(texto)
@@ -373,6 +378,7 @@ class JanelaProjeto(QDialog):
         self.cmb_obra.setCompleter(completer_obra)
         for indice, (sigla, _nome) in enumerate(sorted(constants.OBRAS.items())):
             self.cmb_obra.setItemData(indice, sigla)
+        self.cmb_obra.setCurrentIndex(-1)
         grupo_layout.addWidget(self.cmb_obra, 1, 0)
 
         self.cmb_preset = QComboBox()
@@ -401,12 +407,16 @@ class JanelaProjeto(QDialog):
         grupo_layout.addWidget(self.cmb_zona, 3, 1)
 
         self.cmb_obra.currentIndexChanged.connect(self._atualizar_preview)
-        self.cmb_obra.currentIndexChanged.connect(self._atualizar_estado_botao)
+        self.cmb_obra.currentTextChanged.connect(self._atualizar_estado_botao)
+        self.cmb_obra.currentTextChanged.connect(self._salvar_estado_formulario)
         self.cmb_tipo.currentIndexChanged.connect(self._atualizar_preview)
-        self.cmb_tipo.currentIndexChanged.connect(self._atualizar_estado_botao)
+        self.cmb_tipo.currentTextChanged.connect(self._atualizar_estado_botao)
+        self.cmb_tipo.currentTextChanged.connect(self._salvar_estado_formulario)
+        self.cmb_zona.currentTextChanged.connect(self._salvar_estado_formulario)
 
         self.chk_modo_avancado = QCheckBox("Modo avançado")
         self.chk_modo_avancado.toggled.connect(self._alternar_modo_avancado)
+        self.chk_modo_avancado.toggled.connect(self._salvar_estado_formulario)
         grupo_layout.addWidget(self.chk_modo_avancado, 4, 0, 1, 2)
 
         self.lbl_sigla_projetista = QLabel("Sigla projetista")
@@ -419,10 +429,14 @@ class JanelaProjeto(QDialog):
 
         self.txt_sigla_projetista = QLineEdit()
         self.txt_sigla_projetista.setPlaceholderText("Ex.: CCC")
+        self.txt_sigla_projetista.setAccessibleName("Sigla projetista")
+        self.txt_sigla_projetista.textChanged.connect(self._salvar_estado_formulario)
         grupo_layout.addWidget(self.txt_sigla_projetista, 6, 0)
 
         self.txt_sigla_verificacao = QLineEdit()
         self.txt_sigla_verificacao.setPlaceholderText("Ex.: JRM")
+        self.txt_sigla_verificacao.setAccessibleName("Sigla verificação")
+        self.txt_sigla_verificacao.textChanged.connect(self._salvar_estado_formulario)
         grupo_layout.addWidget(self.txt_sigla_verificacao, 6, 1)
 
         self._alternar_modo_avancado(False)
@@ -430,15 +444,17 @@ class JanelaProjeto(QDialog):
         grupo_projeto.setLayout(grupo_layout)
         layout.addWidget(grupo_projeto)
 
-        grupo_arquivo = QGroupBox("Arquivo de entrada")
+        grupo_arquivo = QGroupBox("Arquivo de entrada *")
         layout_arquivo = QVBoxLayout()
         layout_arquivo.setSpacing(8)
 
         self.btn_kml = QPushButton("📂 Importar KML/KMZ")
+        self.btn_kml.setAccessibleName("Importar arquivo KML ou KMZ")
+        self.btn_kml.setAccessibleDescription("Obrigatório para gerar o projeto.")
         self.btn_kml.clicked.connect(self._selecionar_arquivo)
         layout_arquivo.addWidget(self.btn_kml)
 
-        self.lbl_status = QLabel("Nenhum arquivo importado")
+        self.lbl_status = QLabel("Importe um arquivo KML/KMZ para continuar.")
         self.lbl_status.setObjectName("statusInfo")
         self.lbl_status.setWordWrap(True)
         layout_arquivo.addWidget(self.lbl_status)
@@ -446,14 +462,19 @@ class JanelaProjeto(QDialog):
         grupo_arquivo.setLayout(layout_arquivo)
         layout.addWidget(grupo_arquivo)
 
-        grupo_destino = QGroupBox("Salvar projeto em")
+        grupo_destino = QGroupBox("Salvar projeto em *")
         layout_destino = QVBoxLayout()
         layout_destino.setSpacing(8)
 
         linha_destino = QHBoxLayout()
         self.txt_pasta_projeto = QLineEdit()
         self.txt_pasta_projeto.setPlaceholderText("Escolha a pasta de destino")
+        self.txt_pasta_projeto.setAccessibleName("Pasta de destino do projeto")
+        self.txt_pasta_projeto.setAccessibleDescription(
+            "Obrigatório. Escolha uma pasta existente para salvar o projeto."
+        )
         self.txt_pasta_projeto.textChanged.connect(self._atualizar_estado_botao)
+        self.txt_pasta_projeto.textChanged.connect(self._salvar_configuracao_destino)
         linha_destino.addWidget(self.txt_pasta_projeto, 1)
 
         self.btn_pasta_projeto = QPushButton("Selecionar pasta...")
@@ -823,6 +844,74 @@ class JanelaProjeto(QDialog):
         if nome in self._presets:
             self.settings.setValue("EstelarTemplate/ultimo_preset", nome)
 
+    def _restaurar_estado_formulario(self) -> None:
+        self._carregar_preset_salvo()
+        self._aplicar_preset(self.cmb_preset.currentText())
+
+        obra = self._variaveis_salvas.get("obra") or self.settings.value(
+            "EstelarTemplate/ultima_obra", "", type=str
+        )
+        if obra:
+            indice_obra = self.cmb_obra.findData(obra)
+            if indice_obra < 0:
+                indice_obra = self.cmb_obra.findText(
+                    obra, Qt.MatchFlag.MatchFixedString
+                )
+            if indice_obra >= 0:
+                self.cmb_obra.setCurrentIndex(indice_obra)
+            else:
+                self.cmb_obra.setEditText(obra)
+
+        tipo = self._variaveis_salvas.get("tipo_projeto") or self.settings.value(
+            "EstelarTemplate/ultimo_tipo", "", type=str
+        )
+        if tipo and self.cmb_tipo.findText(tipo) >= 0:
+            self.cmb_tipo.setCurrentText(tipo)
+
+        zona = self._variaveis_salvas.get("zona_utm") or self.settings.value(
+            "EstelarTemplate/ultima_zona", "", type=str
+        )
+        if zona and self.cmb_zona.findText(zona) >= 0:
+            self.cmb_zona.setCurrentText(zona)
+
+        sigla_projetista = self._variaveis_salvas.get("sigla_projetista") or self.settings.value(
+            "EstelarTemplate/ultima_sigla_projetista", "", type=str
+        )
+        sigla_verificacao = self._variaveis_salvas.get("sigla_verificacao") or self.settings.value(
+            "EstelarTemplate/ultima_sigla_verificacao", "", type=str
+        )
+        self.txt_sigla_projetista.setText(sigla_projetista)
+        self.txt_sigla_verificacao.setText(sigla_verificacao)
+        modo_avancado = self.settings.value(
+            "EstelarTemplate/modo_avancado", False, type=bool
+        )
+        self.chk_modo_avancado.setChecked(modo_avancado)
+        self._alternar_modo_avancado(modo_avancado)
+        self._restaurando_estado = False
+
+    def _salvar_estado_formulario(self, *_args) -> None:
+        if self._restaurando_estado:
+            return
+
+        obra = self.cmb_obra.currentText().strip()
+        if obra:
+            self.settings.setValue("EstelarTemplate/ultima_obra", obra)
+        else:
+            self.settings.remove("EstelarTemplate/ultima_obra")
+        self.settings.setValue("EstelarTemplate/ultimo_tipo", self.cmb_tipo.currentText())
+        self.settings.setValue("EstelarTemplate/ultima_zona", self.cmb_zona.currentText())
+        self.settings.setValue(
+            "EstelarTemplate/ultima_sigla_projetista",
+            self.txt_sigla_projetista.text().strip(),
+        )
+        self.settings.setValue(
+            "EstelarTemplate/ultima_sigla_verificacao",
+            self.txt_sigla_verificacao.text().strip(),
+        )
+        self.settings.setValue(
+            "EstelarTemplate/modo_avancado", self.chk_modo_avancado.isChecked()
+        )
+
     def _aplicar_preset(self, nome: str) -> None:
         if nome not in self._presets:
             return
@@ -841,28 +930,48 @@ class JanelaProjeto(QDialog):
             self.cmb_zona.setCurrentText(zona)
 
     def _atualizar_estado_botao(self) -> None:
-        projeto_ok = bool(self.cmb_obra.currentData()) or bool(self.cmb_obra.currentText().strip())
+        projeto_ok = bool(self.cmb_obra.currentText().strip())
         arquivo_ok = bool(self.arquivo)
         destino_ok = os.path.isdir(self.txt_pasta_projeto.text().strip())
         botao_liberado = projeto_ok and arquivo_ok and destino_ok
+        pendencias = []
+        if not projeto_ok:
+            pendencias.append("selecione uma obra")
+        if not arquivo_ok:
+            pendencias.append("importe um arquivo KML/KMZ")
+        if not destino_ok:
+            pendencias.append("escolha uma pasta de destino válida")
+        self._pendencias_validacao = pendencias
+
+        self._definir_estado_validacao(self.cmb_obra, not projeto_ok)
+        self._definir_estado_validacao(self.btn_kml, not arquivo_ok)
+        self._definir_estado_validacao(self.txt_pasta_projeto, not destino_ok)
         self.btn_ok.setEnabled(botao_liberado)
         self.btn_ok.setText(
             "Gerar projeto" if botao_liberado else "🔒 Gerar projeto"
         )
+        self.btn_ok.setToolTip(
+            "Projeto pronto para gerar."
+            if botao_liberado
+            else "Para liberar: " + "; ".join(pendencias) + "."
+        )
 
-        if projeto_ok and arquivo_ok and destino_ok:
+        if botao_liberado:
             self.lbl_status.setText(f"Pronto para gerar: {helpers.nome_do_arquivo(self.arquivo)}")
-        elif projeto_ok and arquivo_ok:
-            self.lbl_status.setText("Escolha a pasta onde o projeto será salvo")
-        elif projeto_ok:
-            self.lbl_status.setText("Selecione um arquivo KML/KMZ para continuar")
-        elif arquivo_ok:
-            self.lbl_status.setText("Selecione a obra antes de gerar o projeto")
         else:
-            self.lbl_status.setText("Nenhum arquivo importado")
+            self.lbl_status.setText("Para liberar a geração: " + "; ".join(pendencias) + ".")
 
         self._atualizar_fluxo_geracao()
         self._atualizar_resumo_geracao()
+
+    @staticmethod
+    def _definir_estado_validacao(widget: QWidget, pendente: bool) -> None:
+        estado = "missing" if pendente else ""
+        if widget.property("validationState") == estado:
+            return
+        widget.setProperty("validationState", estado)
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
 
     def _carregar_configuracao_destino(self) -> None:
         pasta_salva = self.settings.value("EstelarTemplate/ultima_pasta", "", type=str)
@@ -874,6 +983,8 @@ class JanelaProjeto(QDialog):
         pasta = self.txt_pasta_projeto.text().strip()
         if pasta:
             self.settings.setValue("EstelarTemplate/ultima_pasta", pasta)
+        else:
+            self.settings.remove("EstelarTemplate/ultima_pasta")
 
     def _atualizar_resumo_geracao(self) -> None:
         if not hasattr(self, "lbl_resumo_geracao"):
@@ -949,8 +1060,8 @@ class JanelaProjeto(QDialog):
 
     def _construir_rodape(self, layout: QVBoxLayout) -> None:
         rodape = QLabel(constants.RODAPE_TEXTO)
+        rodape.setObjectName("footerNote")
         rodape.setAlignment(Qt.AlignmentFlag.AlignRight)
-        rodape.setStyleSheet("color: gray; font-size: 8pt;")
         layout.addWidget(rodape)
 
     # ------------------------------------------------------------------
@@ -1020,17 +1131,14 @@ class JanelaProjeto(QDialog):
     # silenciosamente sem nenhum aviso ao usuário caso estivessem vazios).
     # ------------------------------------------------------------------
     def accept(self) -> None:
-        obra = self.cmb_obra.currentData() or self.cmb_obra.currentText().strip()
-        if not obra:
-            QMessageBox.warning(self, constants.NOME_PLUGIN, "Selecione o nome da obra antes de continuar.")
+        self._atualizar_estado_botao()
+        if not self.btn_ok.isEnabled():
+            QMessageBox.warning(
+                self,
+                constants.NOME_PLUGIN,
+                "Para gerar o projeto, " + "; ".join(self._pendencias_validacao) + ".",
+            )
             return
 
-        if not self.arquivo:
-            QMessageBox.warning(self, constants.NOME_PLUGIN, "Selecione um arquivo KML/KMZ antes de continuar.")
-            return
-
-        if not os.path.isdir(self.txt_pasta_projeto.text().strip()):
-            QMessageBox.warning(self, constants.NOME_PLUGIN, "Selecione uma pasta válida para salvar o projeto.")
-            return
-
+        self._salvar_estado_formulario()
         super().accept()
