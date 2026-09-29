@@ -839,7 +839,11 @@ class JanelaProjeto(QDialog):
         projeto_ok = bool(self.cmb_obra.currentData()) or bool(self.cmb_obra.currentText().strip())
         arquivo_ok = bool(self.arquivo)
         destino_ok = os.path.isdir(self.txt_pasta_projeto.text().strip())
-        self.btn_ok.setEnabled(projeto_ok and arquivo_ok and destino_ok)
+        botao_liberado = projeto_ok and arquivo_ok and destino_ok
+        self.btn_ok.setEnabled(botao_liberado)
+        self.btn_ok.setText(
+            "Gerar projeto" if botao_liberado else "🔒 Gerar projeto"
+        )
 
         if projeto_ok and arquivo_ok and destino_ok:
             self.lbl_status.setText(f"Pronto para gerar: {helpers.nome_do_arquivo(self.arquivo)}")
