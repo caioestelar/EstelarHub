@@ -101,7 +101,7 @@ class EstelarTemplate:
 
         self.add_action(
             icon_path,
-            text=self.tr("Templetizador STL"),
+            text=constants.NOME_PLUGIN,
             callback=self.run,
             status_tip=self.tr("Configurar o STL-TEMPLATE para este projeto"),
             parent=self.iface.mainWindow(),
