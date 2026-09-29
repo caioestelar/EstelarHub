@@ -369,6 +369,7 @@ class JanelaProjeto(QDialog):
         completer_obra = QCompleter(opcoes_obra, self.cmb_obra)
         completer_obra.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer_obra.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        completer_obra.popup().setObjectName("obraCompleterPopup")
         self.cmb_obra.setCompleter(completer_obra)
         for indice, (sigla, _nome) in enumerate(sorted(constants.OBRAS.items())):
             self.cmb_obra.setItemData(indice, sigla)

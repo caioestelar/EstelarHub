@@ -91,6 +91,51 @@ QDoubleSpinBox:focus {
     background-color: #30394a;
 }
 
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    background-color: #303b50;
+    border-left: 1px solid #435b91;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #3a4f78;
+    border-left-color: #f9620f;
+}
+
+QComboBox:editable QLineEdit {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 6px 9px;
+}
+
+QComboBox QAbstractItemView,
+QAbstractItemView#obraCompleterPopup {
+    background-color: #252a30;
+    color: #eef2f3;
+    border: 1px solid #1e49b1;
+    border-radius: 5px;
+    outline: none;
+    selection-background-color: #1e49b1;
+    selection-color: white;
+}
+
+QComboBox QAbstractItemView::item,
+QAbstractItemView#obraCompleterPopup::item {
+    min-height: 26px;
+    padding: 5px 9px;
+    border-bottom: 1px solid #343b45;
+}
+
+QComboBox QAbstractItemView::item:hover,
+QAbstractItemView#obraCompleterPopup::item:hover {
+    background-color: #303b50;
+}
+
 QSlider::groove:horizontal {
     height: 6px;
     background-color: #465158;
