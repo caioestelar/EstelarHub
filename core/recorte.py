@@ -103,15 +103,15 @@ def recortar_camadas(
     nomes_camadas = list(nomes_camadas)
     total_camadas = len(nomes_camadas)
 
-    for indice, nome_camada in enumerate(nomes_camadas, start=1):
+    for numero_camada, nome_camada in enumerate(nomes_camadas, start=1):
         if callback_progresso:
-            callback_progresso(indice - 1, total_camadas, nome_camada)
+            callback_progresso(numero_camada - 1, total_camadas, nome_camada)
 
         camadas = projeto.mapLayersByName(nome_camada)
 
         if not camadas:
             if callback_progresso:
-                callback_progresso(indice, total_camadas, nome_camada)
+                callback_progresso(numero_camada, total_camadas, nome_camada)
             continue
 
         camada = camadas[0]
@@ -123,8 +123,8 @@ def recortar_camadas(
                 transformador = QgsCoordinateTransform(projeto.crs(), camada.crs(), projeto)
                 geometria_no_crs_alvo.transform(transformador)
 
-            indice = QgsSpatialIndex(camada.getFeatures())
-            candidatos = indice.intersects(geometria_no_crs_alvo.boundingBox())
+            indice_espacial = QgsSpatialIndex(camada.getFeatures())
+            candidatos = indice_espacial.intersects(geometria_no_crs_alvo.boundingBox())
 
             ids = []
             for fid in candidatos:
@@ -143,7 +143,7 @@ def recortar_camadas(
             continue
         finally:
             if callback_progresso:
-                callback_progresso(indice, total_camadas, nome_camada)
+                callback_progresso(numero_camada, total_camadas, nome_camada)
 
     if total_camadas == 0 and callback_progresso:
         callback_progresso(1, 1, "Nenhuma camada")

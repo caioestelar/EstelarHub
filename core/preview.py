@@ -141,17 +141,27 @@ def desenhar_retangulos(dlg) -> None:
     if not hasattr(dlg, "camada_preview"):
         return
 
+    if hasattr(dlg, "spin_001") and hasattr(dlg, "spin_002") and hasattr(dlg, "spin_003"):
+        largura_001 = dlg.spin_001.value()
+        largura_002 = min(dlg.spin_002.value(), largura_001)
+        largura_003 = min(dlg.spin_003.value(), largura_002)
+        dlg.spin_002.setValue(largura_002)
+        dlg.spin_003.setValue(largura_003)
+    else:
+        largura_001 = getattr(dlg, "spin_001", None).value() if hasattr(dlg, "spin_001") else 0
+        largura_002 = getattr(dlg, "spin_002", None).value() if hasattr(dlg, "spin_002") else 0
+        largura_003 = getattr(dlg, "spin_003", None).value() if hasattr(dlg, "spin_003") else 0
+
     centro = dlg.camada_preview.extent().center()
     proporcao = constants.PROPORCAO_RETANGULO
 
     configuracoes = [
-        ("rb_500", dlg.spin_001, "001", "red"),
-        ("rb_100", dlg.spin_002, "002", "blue"),
-        ("rb_25", dlg.spin_003, "003", "green"),
+        ("rb_500", largura_001, "001", QColor(31, 73, 177, 180)),
+        ("rb_100", largura_002, "002", QColor(247, 145, 56, 180)),
+        ("rb_25", largura_003, "003", QColor(70, 130, 180, 170)),
     ]
 
-    for atributo_rb, spin, chave_escala, cor in configuracoes:
-        largura = spin.value()
+    for atributo_rb, largura, chave_escala, cor in configuracoes:
         altura = largura / proporcao
 
         rb = QgsRubberBand(dlg.canvas_preview, QgsWkbTypes.PolygonGeometry)
@@ -162,8 +172,10 @@ def desenhar_retangulos(dlg) -> None:
         )
 
         rb.setToGeometry(QgsGeometry.fromRect(retangulo), None)
-        rb.setStrokeColor(QColor(cor))
+        rb.setStrokeColor(cor)
+        rb.setFillColor(QColor(cor.red(), cor.green(), cor.blue(), 25))
         rb.setWidth(2)
+        rb.setLineStyle(Qt.PenStyle.DashLine)
 
         setattr(dlg, atributo_rb, rb)
 

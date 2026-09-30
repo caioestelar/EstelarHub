@@ -650,8 +650,11 @@ class JanelaProjeto(QDialog):
         self.spin_002 = self._criar_slider_escala(grupo_layout, "002", "LAYOUT 2 (AZUL)", "lbl_002")
         self.spin_003 = self._criar_slider_escala(grupo_layout, "003", "LAYOUT 3 (VERDE)", "lbl_003")
 
+        self.spin_001.valueChanged.connect(self._normalizar_ordem_layouts)
         self.spin_001.valueChanged.connect(self._desenhar_retangulos)
+        self.spin_002.valueChanged.connect(self._normalizar_ordem_layouts)
         self.spin_002.valueChanged.connect(self._desenhar_retangulos)
+        self.spin_003.valueChanged.connect(self._normalizar_ordem_layouts)
         self.spin_003.valueChanged.connect(self._desenhar_retangulos)
 
         grupo_layouts.setLayout(grupo_layout)
@@ -1073,7 +1076,21 @@ class JanelaProjeto(QDialog):
     def _atualizar_preview(self) -> None:
         core_preview.atualizar_preview(self)
 
+    def _normalizar_ordem_layouts(self) -> None:
+        if not hasattr(self, "spin_001") or not hasattr(self, "spin_002") or not hasattr(self, "spin_003"):
+            return
+
+        valor_001 = self.spin_001.value()
+        valor_002 = min(self.spin_002.value(), valor_001)
+        valor_003 = min(self.spin_003.value(), valor_002)
+
+        if self.spin_002.value() != valor_002:
+            self.spin_002.setValue(valor_002)
+        if self.spin_003.value() != valor_003:
+            self.spin_003.setValue(valor_003)
+
     def _desenhar_retangulos(self) -> None:
+        self._normalizar_ordem_layouts()
         core_preview.desenhar_retangulos(self)
 
     def _selecionar_arquivo(self) -> None:
