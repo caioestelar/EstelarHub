@@ -14,8 +14,10 @@ widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QLabel
 from qgis.core import (
     QgsGeometry,
+    QgsPointXY,
     QgsProject,
     QgsRectangle,
     QgsVectorLayer,
@@ -131,6 +133,57 @@ def _remover_rubber_band(dlg, atributo: str) -> None:
         dlg.canvas_preview.scene().removeItem(rb)
 
 
+def _remover_rotulos_preview(dlg) -> None:
+    rotulos = getattr(dlg, "_rotulos_preview", {})
+    for label in list(rotulos.values()):
+        try:
+            label.deleteLater()
+        except Exception:
+            pass
+    dlg._rotulos_preview = {}
+
+
+def _pixel_do_mapa(canvas, ponto: QgsPointXY):
+    configuracao = getattr(canvas, "mapSettings", lambda: None)()
+    if configuracao is not None and hasattr(configuracao, "mapToPixel"):
+        return configuracao.mapToPixel(ponto)
+    if hasattr(canvas, "mapToPixel"):
+        return canvas.mapToPixel(ponto)
+    raise AttributeError("QgsMapCanvas não oferece conversão de coordenadas para pixel nesta API do QGIS.")
+
+
+def _adicionar_rotulo_preview(dlg, nome_layout: str, retangulo: QgsRectangle) -> None:
+    canvas = dlg.canvas_preview
+    ponto = QgsPointXY(retangulo.xMinimum(), retangulo.yMaximum())
+    try:
+        pixel = _pixel_do_mapa(canvas, ponto)
+    except Exception:
+        return
+
+    label = QLabel(nome_layout, canvas.viewport())
+    label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+    label.setStyleSheet(
+        "QLabel {"
+        "  color: #111827;"
+        "  background-color: rgba(255,255,255,90);"
+        "  border: 1px solid rgba(17,24,39,60);"
+        "  border-radius: 5px;"
+        "  padding: 2px 6px;"
+        "  font-size: 9px;"
+        "  font-weight: 600;"
+        "  qproperty-alignment: AlignCenter;"
+        "}"
+    )
+    label.adjustSize()
+    label.move(pixel.x() + 8, pixel.y() + 8)
+    label.raise_()
+    label.show()
+
+    rotulos = getattr(dlg, "_rotulos_preview", {})
+    rotulos[nome_layout] = label
+    dlg._rotulos_preview = rotulos
+
+
 def desenhar_retangulos(dlg) -> None:
     """Desenha os 3 retângulos de preview (vermelho/azul/verde), centrados
     no centróide da camada importada, e atualiza os labels de escala.
@@ -138,6 +191,7 @@ def desenhar_retangulos(dlg) -> None:
     _remover_rubber_band(dlg, "rb_500")
     _remover_rubber_band(dlg, "rb_100")
     _remover_rubber_band(dlg, "rb_25")
+    _remover_rotulos_preview(dlg)
 
     if not hasattr(dlg, "camada_preview"):
         return
@@ -157,12 +211,12 @@ def desenhar_retangulos(dlg) -> None:
     proporcao = constants.PROPORCAO_RETANGULO
 
     configuracoes = [
-        ("rb_500", largura_001, "001", QColor(31, 73, 177, 180)),
-        ("rb_100", largura_002, "002", QColor(247, 145, 56, 180)),
-        ("rb_25", largura_003, "003", QColor(70, 130, 180, 170)),
+        ("rb_500", largura_001, "001", QColor(236, 0, 139, 180), "LAYOUT 1"),
+        ("rb_100", largura_002, "002", QColor(247, 145, 56, 180), "LAYOUT 2"),
+        ("rb_25", largura_003, "003", QColor(0, 196, 210, 170), "LAYOUT 3"),
     ]
 
-    for atributo_rb, largura, chave_escala, cor in configuracoes:
+    for atributo_rb, largura, chave_escala, cor, nome_layout in configuracoes:
         altura = largura / proporcao
 
         rb = QgsRubberBand(dlg.canvas_preview, QgsWkbTypes.PolygonGeometry)
@@ -179,6 +233,7 @@ def desenhar_retangulos(dlg) -> None:
         rb.setLineStyle(Qt.PenStyle.DashLine)
 
         setattr(dlg, atributo_rb, rb)
+        _adicionar_rotulo_preview(dlg, nome_layout, retangulo)
 
     _atualizar_labels_escala(dlg)
 
