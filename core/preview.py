@@ -12,6 +12,7 @@ de estado usado na macro original, só que agora isolado da construção de
 widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 """
 
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
     QgsGeometry,

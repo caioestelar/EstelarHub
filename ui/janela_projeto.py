@@ -588,8 +588,8 @@ class JanelaProjeto(QDialog):
         escala_layout.setContentsMargins(0, 0, 0, 0)
         escala_layout.setSpacing(6)
 
-        self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (VERMELHO)", "lbl_001")
-        self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (AZUL)", "lbl_002")
+        self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (AZUL ESCURO)", "lbl_001")
+        self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (LARANJA)", "lbl_002")
         self.spin_003 = self._criar_slider_escala(escala_layout, "003", "LAYOUT 3 (VERDE)", "lbl_003")
 
         self.spin_001.valueChanged.connect(self._desenhar_retangulos)
