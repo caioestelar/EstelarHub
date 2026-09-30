@@ -12,7 +12,7 @@ de estado usado na macro original, só que agora isolado da construção de
 widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 """
 
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import QPoint, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLabel
 from qgis.core import (
@@ -23,7 +23,7 @@ from qgis.core import (
     QgsVectorLayer,
     QgsWkbTypes,
 )
-from qgis.gui import QgsRubberBand
+from qgis.gui import QgsMapToolIdentify, QgsRubberBand
 
 from . import kml, municipios
 from ..utils import constants, helpers
@@ -143,12 +143,117 @@ def _remover_rotulos_preview(dlg) -> None:
     dlg._rotulos_preview = {}
 
 
+def _remover_aviso_preview(dlg) -> None:
+    aviso = getattr(dlg, "_aviso_preview", None)
+    if aviso is not None:
+        try:
+            aviso.deleteLater()
+        except Exception:
+            pass
+    dlg._aviso_preview = None
+
+
+class PreviewMoveTool(QgsMapToolIdentify):
+    """Permite arrastar o centro do preview na tela sem mexer no mapa real."""
+
+    def __init__(self, canvas, dlg):
+        super().__init__(canvas)
+        self.dlg = dlg
+        self._arrastando = False
+        self._centro_original = None
+        self._coordenada_original = None
+        self._centros_originais = {}
+
+    def setCursor(self, cursor):
+        try:
+            self.canvas().setCursor(cursor)
+        except Exception:
+            pass
+
+    def _pixel_para_coordenada(self, pos):
+        canvas = self.canvas()
+        transform = getattr(canvas, "getCoordinateTransform", None)
+        if callable(transform):
+            try:
+                return transform().toMapCoordinates(pos)
+            except Exception:
+                pass
+
+        if hasattr(canvas, "mapToPixel"):
+            try:
+                return canvas.mapToPixel(pos)
+            except Exception:
+                pass
+
+        raise AttributeError("Nenhuma API compatível de conversão pixel -> coordenada foi encontrada no QGIS atual.")
+
+    def canvasPressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        if not hasattr(self.dlg, "camada_preview"):
+            return
+
+        self._arrastando = True
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        self._centro_original = getattr(
+            self.dlg,
+            "_preview_centro",
+            self.dlg.camada_preview.extent().center(),
+        )
+        self._coordenada_original = self._pixel_para_coordenada(event.pos())
+        self._centros_originais = dict(getattr(self.dlg, "_preview_centros", {}))
+
+    def canvasMoveEvent(self, event):
+        if not self._arrastando:
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            return
+
+        coordenada_atual = self._pixel_para_coordenada(event.pos())
+        delta_x = coordenada_atual.x() - self._coordenada_original.x()
+        delta_y = coordenada_atual.y() - self._coordenada_original.y()
+
+        for chave in ("001", "002", "003"):
+            if self.dlg._layout_locked.get(chave, False):
+                continue
+
+            centro_original = self._centros_originais.get(chave, self._centro_original)
+            novo_centro = QgsPointXY(
+                centro_original.x() + delta_x,
+                centro_original.y() + delta_y,
+            )
+            self.dlg._preview_centros[chave] = novo_centro
+
+        if not any(not self.dlg._layout_locked.get(chave, False) for chave in ("001", "002", "003")):
+            self.dlg._preview_centro = self._centro_original
+        else:
+            self.dlg._preview_centro = self.dlg._preview_centros["001"]
+
+        desenhar_retangulos(self.dlg)
+
+    def canvasReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._arrastando = False
+            self._centro_original = None
+            self._coordenada_original = None
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+
+    def canvasLeaveEvent(self, event):
+        if not self._arrastando:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+
+
 def _pixel_do_mapa(canvas, ponto: QgsPointXY):
     configuracao = getattr(canvas, "mapSettings", lambda: None)()
     if configuracao is not None and hasattr(configuracao, "mapToPixel"):
         return configuracao.mapToPixel(ponto)
     if hasattr(canvas, "mapToPixel"):
         return canvas.mapToPixel(ponto)
+    if hasattr(canvas, "getCoordinateTransform"):
+        try:
+            transform = canvas.getCoordinateTransform()
+            return transform.transform(ponto)
+        except Exception:
+            pass
     raise AttributeError("QgsMapCanvas não oferece conversão de coordenadas para pixel nesta API do QGIS.")
 
 
@@ -175,13 +280,50 @@ def _adicionar_rotulo_preview(dlg, nome_layout: str, retangulo: QgsRectangle) ->
         "}"
     )
     label.adjustSize()
-    label.move(pixel.x() + 8, pixel.y() + 8)
+    label.move(int(pixel.x()) + 6, int(pixel.y()) + 6)
     label.raise_()
     label.show()
 
     rotulos = getattr(dlg, "_rotulos_preview", {})
     rotulos[nome_layout] = label
     dlg._rotulos_preview = rotulos
+
+
+def _atualizar_aviso_preview(dlg, retangulos):
+    _remover_aviso_preview(dlg)
+    if not hasattr(dlg, "camada_preview"):
+        return
+
+    try:
+        feicao = next(dlg.camada_preview.getFeatures(), None)
+    except Exception:
+        return
+    if feicao is None:
+        return
+
+    ponto = feicao.geometry().centroid().asPoint()
+    if any(retangulo.contains(ponto) for retangulo in retangulos):
+        return
+
+    aviso = QLabel("⚠ A usina está fora dos previews.", dlg.canvas_preview.viewport())
+    aviso.setObjectName("previewWarning")
+    aviso.setStyleSheet(
+        "QLabel {"
+        "  color: #7c2d12;"
+        "  background: rgba(255, 237, 213, 200);"
+        "  border: 1px solid rgba(251, 146, 60, 180);"
+        "  border-radius: 8px;"
+        "  padding: 6px 10px;"
+        "  font-size: 11px;"
+        "  font-weight: 700;"
+        "  qproperty-alignment: AlignCenter;"
+        "}"
+    )
+    aviso.adjustSize()
+    aviso.move(12, 12)
+    aviso.raise_()
+    aviso.show()
+    dlg._aviso_preview = aviso
 
 
 def desenhar_retangulos(dlg) -> None:
@@ -192,6 +334,7 @@ def desenhar_retangulos(dlg) -> None:
     _remover_rubber_band(dlg, "rb_100")
     _remover_rubber_band(dlg, "rb_25")
     _remover_rotulos_preview(dlg)
+    _remover_aviso_preview(dlg)
 
     if not hasattr(dlg, "camada_preview"):
         return
@@ -207,7 +350,14 @@ def desenhar_retangulos(dlg) -> None:
         largura_002 = getattr(dlg, "spin_002", None).value() if hasattr(dlg, "spin_002") else 0
         largura_003 = getattr(dlg, "spin_003", None).value() if hasattr(dlg, "spin_003") else 0
 
-    centro = dlg.camada_preview.extent().center()
+    if not hasattr(dlg, "_preview_centro"):
+        dlg._preview_centro = dlg.camada_preview.extent().center()
+    if not hasattr(dlg, "_preview_centros"):
+        dlg._preview_centros = {"001": dlg._preview_centro, "002": dlg._preview_centro, "003": dlg._preview_centro}
+    for chave in ("001", "002", "003"):
+        if dlg._preview_centros.get(chave) is None:
+            dlg._preview_centros[chave] = dlg._preview_centro
+
     proporcao = constants.PROPORCAO_RETANGULO
 
     configuracoes = [
@@ -216,8 +366,10 @@ def desenhar_retangulos(dlg) -> None:
         ("rb_25", largura_003, "003", QColor(0, 196, 210, 170), "LAYOUT 3"),
     ]
 
+    retangulos_preview = []
     for atributo_rb, largura, chave_escala, cor, nome_layout in configuracoes:
         altura = largura / proporcao
+        centro = dlg._preview_centros.get(chave_escala, dlg._preview_centro)
 
         rb = QgsRubberBand(dlg.canvas_preview, QgsWkbTypes.PolygonGeometry)
 
@@ -225,6 +377,7 @@ def desenhar_retangulos(dlg) -> None:
             centro.x() - largura, centro.y() - altura,
             centro.x() + largura, centro.y() + altura,
         )
+        retangulos_preview.append(retangulo)
 
         rb.setToGeometry(QgsGeometry.fromRect(retangulo), None)
         rb.setStrokeColor(cor)
@@ -235,6 +388,7 @@ def desenhar_retangulos(dlg) -> None:
         setattr(dlg, atributo_rb, rb)
         _adicionar_rotulo_preview(dlg, nome_layout, retangulo)
 
+    _atualizar_aviso_preview(dlg, retangulos_preview)
     _atualizar_labels_escala(dlg)
 
 

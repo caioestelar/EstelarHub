@@ -34,6 +34,7 @@ from qgis.PyQt.QtWidgets import (
     QScrollArea,
     QSlider,
     QTextEdit,
+    QStyle,
     QVBoxLayout,
     QWidget,
     QTabWidget
@@ -108,6 +109,23 @@ class BarraTitulo(QWidget):
 class JanelaProjeto(QDialog):
     """Diálogo de configuração do template de mapa de localização."""
 
+    def _icone_lock_layout(self, bloqueado: bool):
+        estilo = self.style()
+
+        pixmap_class = getattr(QStyle, "StandardPixmap", None)
+        if pixmap_class is not None:
+            lock_enum = getattr(pixmap_class, "SP_LockIcon", None)
+            unlock_enum = getattr(pixmap_class, "SP_UnlockIcon", None)
+            if lock_enum is not None and unlock_enum is not None:
+                return estilo.standardIcon(lock_enum if bloqueado else unlock_enum)
+
+        if hasattr(QStyle, "SP_LockIcon") and hasattr(QStyle, "SP_UnlockIcon"):
+            return estilo.standardIcon(
+                QStyle.SP_LockIcon if bloqueado else QStyle.SP_UnlockIcon
+            )
+
+        return None
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -145,6 +163,8 @@ class JanelaProjeto(QDialog):
 
         projeto = QgsProject.instance()
         self._variaveis_salvas = core_variaveis.carregar_variaveis(projeto)
+        self._preview_centros = {"001": None, "002": None, "003": None}
+        self._layout_locked = {"001": False, "002": False, "003": False}
 
         self.setWindowTitle(constants.NOME_PLUGIN)
         self.setWindowFlags(
@@ -522,6 +542,10 @@ class JanelaProjeto(QDialog):
         self.canvas_preview.setMinimumHeight(360)
         self.canvas_preview.enableAntiAliasing(True)
         self.canvas_preview.setBackgroundRole(QPalette.ColorRole.Window)
+        self.canvas_preview.viewport().setMouseTracking(True)
+
+        self._preview_tool = core_preview.PreviewMoveTool(self.canvas_preview, self)
+        self.canvas_preview.setMapTool(self._preview_tool)
 
         try:
             self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
@@ -613,6 +637,21 @@ class JanelaProjeto(QDialog):
 
         grupo_preview.setLayout(grupo_layout)
         layout.addWidget(grupo_preview)
+
+    def _alternar_lock_layout(self, chave: str) -> None:
+        if chave not in self._layout_locked:
+            return
+        self._layout_locked[chave] = not self._layout_locked[chave]
+        botao = getattr(self, f"lock_{chave}", None)
+        if botao is not None:
+            icon = self._icone_lock_layout(self._layout_locked[chave])
+            if icon is not None:
+                botao.setIcon(icon)
+                botao.setText("")
+            else:
+                botao.setText("🔒" if self._layout_locked[chave] else "🔓")
+            botao.setToolTip("Layout bloqueado" if self._layout_locked[chave] else "Layout desbloqueado")
+        self._desenhar_retangulos()
 
     def _alterar_estilo_mapa(self, _indice: int) -> None:
         self._estilo_mapa = self.cmb_estilo_mapa.currentData() or "satelite"
@@ -733,6 +772,24 @@ class JanelaProjeto(QDialog):
         titulo_label.setObjectName("scaleTitle")
         cabecalho.addWidget(titulo_label)
         cabecalho.addStretch()
+
+        btn_lock = QPushButton()
+        btn_lock.setObjectName("layoutLockButton")
+        btn_lock.setFixedSize(26, 26)
+        btn_lock.setCheckable(True)
+        btn_lock.setChecked(False)
+        btn_lock.setToolTip("Bloquear layout no preview")
+        icon = self._icone_lock_layout(False)
+        if icon is not None:
+            btn_lock.setText("")
+            btn_lock.setIcon(icon)
+            btn_lock.setIconSize(btn_lock.size() * 0.6)
+        else:
+            btn_lock.setText("🔓")
+        btn_lock.clicked.connect(lambda _checked, k=chave: self._alternar_lock_layout(k))
+        cabecalho.addWidget(btn_lock)
+        setattr(self, f"lock_{chave}", btn_lock)
+
         cabecalho.addWidget(label_escala)
 
         linha = QHBoxLayout()

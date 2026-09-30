@@ -335,6 +335,22 @@ QTabBar::tab:hover {
     font-size: 8.5pt;
 }
 
+#layoutLockButton {
+    background-color: #2a3740;
+    border: 1px solid #5d6d7a;
+    border-radius: 5px;
+    padding: 0;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    max-height: 26px;
+}
+
+#layoutLockButton:hover {
+    background-color: #33475c;
+    border-color: #f9620f;
+}
+
 #fieldLabel {
     color: #dfe7ea;
     font-weight: 600;
