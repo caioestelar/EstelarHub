@@ -44,13 +44,9 @@ from qgis.PyQt.QtWidgets import (
     QScrollArea,
     QSizeGrip,
     QSlider,
-    QStackedWidget,
     QTextEdit,
-    QStyle,
-    QToolButton,
     QVBoxLayout,
     QWidget,
-    QTabWidget
 
 )
 from qgis.core import QgsCoordinateReferenceSystem, QgsProject
@@ -173,13 +169,6 @@ class LuzAmbienteNeon(QWidget):
             painter.drawRect(0, 0, self.width(), self.height())
 
         painter.end()
-
-
-class AbaHover(QTabWidget):
-    """QTabWidget com troca de conteúdo apenas por clique."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
 
 
 class BarraTitulo(QWidget):
@@ -358,13 +347,13 @@ class JanelaProjeto(QDialog):
         self.setMaximumSize(1400, 820)
 
         layout_principal = QVBoxLayout()
-        layout_principal.setContentsMargins(10, 8, 10, 8)
-        layout_principal.setSpacing(8)
+        layout_principal.setContentsMargins(8, 6, 8, 6)
+        layout_principal.setSpacing(6)
 
         # Cabeçalho permanece fora das abas
         self._construir_cabecalho(layout_principal)
 
-        # Conteúdo principal: navegação lateral + páginas empilhadas.
+        # Hub principal: configuração, mapa e resumo convivem na mesma tela.
         aba_projeto = QWidget()
         layout_projeto = QVBoxLayout()
         layout_projeto.setContentsMargins(4, 4, 4, 4)
@@ -434,52 +423,27 @@ class JanelaProjeto(QDialog):
         layout_config.addWidget(self.log_geracao)
         aba_config.setLayout(layout_config)
 
-        paginas = QStackedWidget()
-        paginas.setObjectName("mainStack")
-        paginas.addWidget(scroll_projeto)
-        paginas.addWidget(scroll_layouts)
-        paginas.addWidget(aba_config)
-        paginas.setMinimumHeight(360)
+        hub = QWidget()
+        hub.setObjectName("hubSurface")
+        hub_layout = QGridLayout(hub)
+        hub_layout.setContentsMargins(0, 0, 0, 0)
+        hub_layout.setHorizontalSpacing(6)
+        hub_layout.setVerticalSpacing(6)
+        hub_layout.setColumnMinimumWidth(0, 320)
+        hub_layout.setColumnMinimumWidth(1, 400)
+        hub_layout.setColumnMinimumWidth(2, 230)
+        hub_layout.setColumnStretch(0, 3)
+        hub_layout.setColumnStretch(1, 5)
+        hub_layout.setColumnStretch(2, 2)
 
-        navegacao = QFrame()
-        navegacao.setObjectName("sideNav")
-        navegacao.setFixedWidth(58)
-        navegacao_layout = QVBoxLayout(navegacao)
-        navegacao_layout.setContentsMargins(6, 8, 6, 8)
-        navegacao_layout.setSpacing(8)
-
-        botoes_navegacao = []
-        itens_navegacao = [
-            ("project", "Projeto", "Dados do empreendimento e arquivo de entrada."),
-            ("layouts", "Layouts", "Preview, escalas e posições dos layouts."),
-            ("summary", "Resumo", "Resumo da configuração e log de geração."),
-        ]
-        for indice, (icone, titulo, dica) in enumerate(itens_navegacao):
-            botao = QToolButton(navegacao)
-            botao.setObjectName("sideNavButton")
-            botao.setCheckable(True)
-            botao.setAutoExclusive(True)
-            botao.setIcon(criar_icone_estelar(icone))
-            botao.setIconSize(QSize(21, 21))
-            botao.setToolTip(f"{titulo}: {dica}")
-            botao.clicked.connect(
-                lambda _checked, pagina=indice: paginas.setCurrentIndex(pagina)
-            )
-            navegacao_layout.addWidget(botao)
-            botoes_navegacao.append(botao)
-
-        navegacao_layout.addStretch()
-        botoes_navegacao[0].setChecked(True)
-        self._abas_principais = paginas
-        self._botoes_navegacao = botoes_navegacao
-        paginas.currentChanged.connect(self._animar_aba)
-
-        area_principal = QHBoxLayout()
-        area_principal.setContentsMargins(0, 0, 0, 0)
-        area_principal.setSpacing(8)
-        area_principal.addWidget(navegacao)
-        area_principal.addWidget(paginas, 1)
-        layout_principal.addLayout(area_principal, 1)
+        scroll_projeto.setObjectName("hubCard")
+        scroll_layouts.setObjectName("hubMapCard")
+        aba_config.setObjectName("hubCard")
+        hub_layout.addWidget(scroll_projeto, 0, 0)
+        hub_layout.addWidget(scroll_layouts, 0, 1)
+        hub_layout.addWidget(aba_config, 0, 2)
+        hub_layout.setRowStretch(0, 1)
+        layout_principal.addWidget(hub, 1)
 
         self._construir_fluxo_geracao(layout_principal)
 
@@ -494,7 +458,7 @@ class JanelaProjeto(QDialog):
 
         self.setLayout(layout_principal)
         self._iniciar_animacoes_ambiente()
-        QTimer.singleShot(0, lambda: self._animar_aba(paginas.currentIndex()))
+        QTimer.singleShot(0, lambda: self._animar_cartoes(hub))
 
 
 
@@ -581,10 +545,12 @@ class JanelaProjeto(QDialog):
     def _construir_campos_obra(self, layout: QVBoxLayout) -> None:
         grupo_projeto = QGroupBox("Dados do projeto")
         grupo_layout = QGridLayout()
-        grupo_layout.setColumnStretch(0, 3)
-        grupo_layout.setColumnStretch(1, 2)
-        grupo_layout.setHorizontalSpacing(10)
-        grupo_layout.setVerticalSpacing(8)
+        grupo_layout.setColumnStretch(0, 2)
+        grupo_layout.setColumnStretch(1, 1)
+        grupo_layout.setColumnMinimumWidth(0, 0)
+        grupo_layout.setColumnMinimumWidth(1, 0)
+        grupo_layout.setHorizontalSpacing(8)
+        grupo_layout.setVerticalSpacing(6)
 
         self.lbl_obra = QLabel("Nome da obra *")
         self.lbl_obra.setObjectName("fieldLabel")
@@ -602,7 +568,7 @@ class JanelaProjeto(QDialog):
         self.cmb_obra.setAccessibleDescription(
             "Obrigatório. Selecione uma obra cadastrada ou digite um nome."
         )
-        self.cmb_obra.setMaximumWidth(520)
+        self.cmb_obra.setMaximumWidth(220)
         opcoes_obra = [f"{sigla} - {nome}" for sigla, nome in sorted(constants.OBRAS.items())]
         for texto in opcoes_obra:
             self.cmb_obra.addItem(texto)
@@ -618,7 +584,7 @@ class JanelaProjeto(QDialog):
 
         self.cmb_preset = QComboBox()
         self.cmb_preset.setAccessibleName("Perfil rápido")
-        self.cmb_preset.setMaximumWidth(240)
+        self.cmb_preset.setMaximumWidth(140)
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
         self._carregar_preset_salvo()
@@ -635,13 +601,13 @@ class JanelaProjeto(QDialog):
         self.cmb_tipo = QComboBox()
         self.cmb_tipo.setAccessibleName("Tipo de projeto")
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
-        self.cmb_tipo.setMaximumWidth(360)
+        self.cmb_tipo.setMaximumWidth(180)
         grupo_layout.addWidget(self.cmb_tipo, 3, 0)
 
         self.cmb_zona = QComboBox()
         self.cmb_zona.setAccessibleName("Zona UTM")
         self.cmb_zona.addItems(constants.ZONAS_UTM)
-        self.cmb_zona.setMaximumWidth(240)
+        self.cmb_zona.setMaximumWidth(140)
         self.cmb_zona.setCurrentText(
             self._variaveis_salvas.get("zona_utm") or "AUTOMÁTICO"
         )
@@ -722,27 +688,32 @@ class JanelaProjeto(QDialog):
 
         self.btn_pasta_projeto = QPushButton("Selecionar pasta...")
         self.btn_pasta_projeto.setIcon(criar_icone_estelar("folder"))
+        self.btn_pasta_projeto.setMaximumWidth(132)
         self.btn_pasta_projeto.clicked.connect(self._selecionar_pasta_projeto)
         linha_destino.addWidget(self.btn_pasta_projeto)
 
-        linha_acoes_destino = QHBoxLayout()
-        linha_acoes_destino.setSpacing(6)
+        linha_acoes_destino = QGridLayout()
+        linha_acoes_destino.setHorizontalSpacing(6)
+        linha_acoes_destino.setVerticalSpacing(6)
 
         self.btn_abrir_pasta_projeto = QPushButton("Abrir pasta")
         self.btn_abrir_pasta_projeto.setIcon(criar_icone_estelar("folder_open"))
+        self.btn_abrir_pasta_projeto.setMaximumWidth(150)
         self.btn_abrir_pasta_projeto.clicked.connect(self._abrir_pasta_projeto)
-        linha_acoes_destino.addWidget(self.btn_abrir_pasta_projeto)
+        linha_acoes_destino.addWidget(self.btn_abrir_pasta_projeto, 0, 0)
 
         self.btn_copiar_caminho = QPushButton("Copiar caminho")
         self.btn_copiar_caminho.setIcon(criar_icone_estelar("copy"))
+        self.btn_copiar_caminho.setMaximumWidth(150)
         self.btn_copiar_caminho.clicked.connect(self._copiar_caminho_projeto)
-        linha_acoes_destino.addWidget(self.btn_copiar_caminho)
+        linha_acoes_destino.addWidget(self.btn_copiar_caminho, 0, 1)
 
         self.btn_abrir_projeto = QPushButton("Abrir projeto")
         self.btn_abrir_projeto.setIcon(criar_icone_estelar("file"))
+        self.btn_abrir_projeto.setMaximumWidth(300)
         self.btn_abrir_projeto.setEnabled(False)
         self.btn_abrir_projeto.clicked.connect(self._abrir_projeto_gerado)
-        linha_acoes_destino.addWidget(self.btn_abrir_projeto)
+        linha_acoes_destino.addWidget(self.btn_abrir_projeto, 1, 0, 1, 2)
 
         self.btn_copiar_caminho.setEnabled(bool(self.txt_pasta_projeto.text().strip()))
         self.btn_abrir_projeto.setEnabled(bool(self.ultimo_projeto_gerado and os.path.isfile(self.ultimo_projeto_gerado)))
@@ -779,7 +750,7 @@ class JanelaProjeto(QDialog):
             self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
             QgsProject.instance().addMapLayer(self.camada_base, False)
             self.canvas_preview.setLayers([self.camada_base])
-            self.canvas_preview.zoomToFullExtent()
+            core_preview.zoomar_brasil(self)
         except Exception:
             self.camada_base = None
             self.canvas_preview.setLayers([])
@@ -891,7 +862,7 @@ class JanelaProjeto(QDialog):
                 self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
                 QgsProject.instance().addMapLayer(self.camada_base, False)
                 self.canvas_preview.setLayers([self.camada_base])
-                self.canvas_preview.zoomToFullExtent()
+                core_preview.zoomar_brasil(self)
             except Exception as erro:
                 QMessageBox.warning(self, constants.NOME_PLUGIN, f"Não foi possível alterar o estilo do mapa:\n{erro}")
             return
