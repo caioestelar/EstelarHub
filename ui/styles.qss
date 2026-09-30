@@ -478,3 +478,343 @@ QComboBox#mapStylePanel {
     margin: 0px;
 }
 
+/* Neon workstation theme */
+QDialog {
+    background-color: #070b12;
+    color: #d9faff;
+    border: 1px solid #126b91;
+    border-radius: 14px;
+    font-family: "Bahnschrift";
+}
+
+QScrollArea,
+QScrollArea > QWidget > QWidget {
+    background-color: #070b12;
+}
+
+QLabel {
+    color: #b8d8e0;
+}
+
+#titleBar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #081522, stop:0.55 #0b1c2d, stop:1 #071018);
+    border: 1px solid #087fa8;
+    border-left: 3px solid #00e5ff;
+    border-radius: 7px;
+}
+
+#dialogTitle {
+    color: #e9fdff;
+    font-size: 13pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+#dialogSubtitle {
+    color: #4bc9e8;
+}
+
+#btnMinimize,
+#btnClose {
+    background-color: #0c1b2a;
+    color: #83eaff;
+    border: 1px solid #155879;
+    border-radius: 5px;
+}
+
+#btnMinimize:hover {
+    background-color: #103d58;
+    border-color: #00e5ff;
+}
+
+#btnClose:hover {
+    background-color: #8d2f20;
+    border-color: #ff7043;
+    color: #fff4ef;
+}
+
+QGroupBox {
+    background-color: #0a111a;
+    border: 1px solid #153b50;
+    border-radius: 7px;
+    color: #8beeff;
+}
+
+QGroupBox::title {
+    color: #00e5ff;
+    background-color: #070b12;
+}
+
+QLineEdit,
+QComboBox,
+QDoubleSpinBox {
+    background-color: #0b1722;
+    color: #e1fbff;
+    border: 1px solid #1b4d65;
+    border-radius: 5px;
+}
+
+QLineEdit:focus,
+QComboBox:focus,
+QDoubleSpinBox:focus {
+    background-color: #0d2030;
+    border: 1px solid #00e5ff;
+}
+
+QComboBox::drop-down {
+    background-color: #0c2940;
+    border-left: 1px solid #087fa8;
+}
+
+QComboBox::drop-down:hover {
+    background-color: #0f4b68;
+    border-left-color: #00e5ff;
+}
+
+QComboBox QAbstractItemView,
+QAbstractItemView#obraCompleterPopup {
+    background-color: #08131e;
+    color: #d9faff;
+    border: 1px solid #00a8d0;
+    selection-background-color: #07577b;
+    selection-color: #ffffff;
+}
+
+QComboBox QAbstractItemView::item:hover,
+QAbstractItemView#obraCompleterPopup::item:hover {
+    background-color: #10374e;
+}
+
+QPushButton {
+    background-color: #0d2536;
+    color: #bfefff;
+    border: 1px solid #176180;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+    background-color: #10445e;
+    border-color: #00e5ff;
+    color: #ffffff;
+}
+
+QPushButton:pressed {
+    background-color: #082b40;
+}
+
+QPushButton:focus,
+QTabBar::tab:focus,
+QCheckBox:focus {
+    border: 1px solid #00e5ff;
+}
+
+#btnGerar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #00a9cf, stop:1 #0871b4);
+    color: #ffffff;
+    border: 1px solid #49edff;
+    font-size: 10.5pt;
+}
+
+#btnGerar:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #11dafa, stop:1 #0b91dc);
+}
+
+#btnGerar:disabled {
+    background-color: #12202a;
+    color: #52707c;
+    border-color: #25404d;
+}
+
+#btnReset {
+    background-color: #171b25;
+    color: #ffab8b;
+    border-color: #81412f;
+}
+
+#btnReset:hover {
+    background-color: #3b2025;
+    border-color: #ff7043;
+}
+
+QTabWidget::pane {
+    background-color: #080e16;
+    border: 1px solid #153b50;
+}
+
+QTabBar::tab {
+    background-color: #0a1723;
+    color: #668c99;
+    border: 1px solid #123447;
+    padding: 7px 13px;
+}
+
+QTabBar::tab:selected {
+    background-color: #0c3046;
+    color: #d9fbff;
+    border-bottom: 2px solid #00e5ff;
+}
+
+QTabBar::tab:hover {
+    background-color: #10374e;
+    color: #ffffff;
+}
+
+#previewInfo,
+#statusInfo {
+    color: #c7f4fb;
+    background-color: rgba(7, 22, 32, 235);
+    border: 1px solid #15516a;
+    border-left: 3px solid #00e5ff;
+}
+
+#scalePanel,
+#mapStylePanel {
+    background-color: rgba(5, 14, 23, 235);
+    border: 1px solid #17607d;
+}
+
+#scaleValue {
+    color: #bdf8ff;
+    background-color: #0a2940;
+    border-color: #008db7;
+}
+
+#scaleTitle,
+#fieldLabel,
+#mapStyleLabel {
+    color: #a8d8e2;
+}
+
+#layoutCard {
+    background-color: #0a1722;
+    border: 1px solid #17455c;
+}
+
+#layoutLockButton {
+    background-color: #0b2637;
+    border-color: #19708f;
+}
+
+#layoutLockButton:hover {
+    background-color: #104b64;
+    border-color: #00e5ff;
+}
+
+QSlider::groove:horizontal {
+    background-color: #153443;
+}
+
+QSlider::sub-page:horizontal {
+    background-color: #00a9cf;
+}
+
+QSlider::handle:horizontal {
+    background-color: #07131d;
+    border-color: #00e5ff;
+}
+
+#generationStepNumber[state="active"] {
+    background-color: #00b9dc;
+}
+
+#generationStepText[state="active"] {
+    color: #65ecff;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #00e5ff, stop:1 #0871b4);
+}
+
+/* Interaction geometry */
+QTabBar {
+    qproperty-drawBase: 0;
+}
+
+QTabBar::tab {
+    min-width: 0px;
+    padding: 8px 18px;
+    margin: 0px 4px 4px 0px;
+    border: 1px solid #16455d;
+    border-radius: 8px;
+}
+
+QTabBar::tab:selected {
+    border: 1px solid #00e5ff;
+    border-bottom: 2px solid #00e5ff;
+}
+
+QGroupBox {
+    margin-top: 12px;
+    padding: 12px 10px 10px 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 14px;
+    padding: 1px 8px;
+    border: 1px solid #15516a;
+    border-radius: 4px;
+}
+
+QPushButton {
+    min-height: 30px;
+    padding: 7px 14px;
+    border-radius: 8px;
+}
+
+#btnGerar {
+    min-height: 42px;
+    border-radius: 10px;
+}
+
+#btnReset {
+    min-height: 42px;
+    border-radius: 10px;
+}
+
+#layoutCard {
+    border-radius: 9px;
+    padding: 1px;
+}
+
+#scalePanel {
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+#previewInfo {
+    border-radius: 9px;
+    padding: 9px 11px;
+}
+
+#statusInfo {
+    border-radius: 9px;
+}
+
+QLineEdit,
+QComboBox,
+QDoubleSpinBox {
+    min-height: 30px;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+
+QSlider::groove:horizontal {
+    height: 4px;
+    border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+    width: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+
+#layoutLockButton {
+    border-radius: 8px;
+}
+

@@ -13,7 +13,16 @@ princípio de separação de responsabilidades pedido na reestruturação do
 plugin.
 """
 
-from qgis.PyQt.QtCore import Qt, QSettings
+from qgis.PyQt.QtCore import (
+    QPropertyAnimation,
+    QEasingCurve,
+    QSequentialAnimationGroup,
+    QSettings,
+    QTimer,
+    Qt,
+)
+from qgis.PyQt.QtGui import QColor, QPainter, QRadialGradient
+from qgis.PyQt.QtWidgets import QGraphicsOpacityEffect
 from qgis.PyQt.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -50,6 +59,51 @@ from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
 import os
 from qgis.PyQt.QtGui import QPalette, QPixmap
+
+
+class LuzAmbienteNeon(QWidget):
+    """Camada decorativa leve, sem interação, para dar profundidade ao painel."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._fase = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(45)
+        self._timer.timeout.connect(self._avancar)
+        self._timer.start()
+
+    def _avancar(self):
+        self._fase = (self._fase + 0.004) % 1.0
+        self.update()
+
+    def paintEvent(self, _event):
+        if self.width() <= 0 or self.height() <= 0:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        largura = float(self.width())
+        altura = float(self.height())
+        deslocamento = (self._fase * 2.0) - 0.5
+
+        pontos = [
+            (largura * (0.15 + deslocamento * 0.22), altura * 0.20, (0, 229, 255)),
+            (largura * (0.85 - deslocamento * 0.18), altura * 0.78, (8, 113, 180)),
+        ]
+        for x, y, cor in pontos:
+            raio = max(largura, altura) * 0.42
+            gradiente = QRadialGradient(x, y, raio)
+            gradiente.setColorAt(0.0, QColor(cor[0], cor[1], cor[2], 18))
+            gradiente.setColorAt(0.55, QColor(cor[0], cor[1], cor[2], 7))
+            gradiente.setColorAt(1.0, QColor(cor[0], cor[1], cor[2], 0))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(gradiente)
+            painter.drawRect(0, 0, self.width(), self.height())
+
+        painter.end()
 
 
 class AbaHover(QTabWidget):
@@ -108,6 +162,59 @@ class BarraTitulo(QWidget):
 
 class JanelaProjeto(QDialog):
     """Diálogo de configuração do template de mapa de localização."""
+
+    def _iniciar_animacoes_ambiente(self) -> None:
+        self._luz_ambiente = LuzAmbienteNeon(self)
+        self._luz_ambiente.setGeometry(self.rect())
+        self._luz_ambiente.lower()
+
+        efeito_botao = QGraphicsOpacityEffect(self.btn_ok)
+        self.btn_ok.setGraphicsEffect(efeito_botao)
+        entrada = QPropertyAnimation(efeito_botao, b"opacity", self)
+        entrada.setDuration(1100)
+        entrada.setStartValue(0.82)
+        entrada.setEndValue(1.0)
+        entrada.setEasingCurve(QEasingCurve.Type.InOutSine)
+
+        saida = QPropertyAnimation(efeito_botao, b"opacity", self)
+        saida.setDuration(1100)
+        saida.setStartValue(1.0)
+        saida.setEndValue(0.82)
+        saida.setEasingCurve(QEasingCurve.Type.InOutSine)
+
+        self._animacao_pulso = QSequentialAnimationGroup(self)
+        self._animacao_pulso.addAnimation(entrada)
+        self._animacao_pulso.addAnimation(saida)
+        self._animacao_pulso.setLoopCount(-1)
+        self._animacao_pulso.start()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        luz = getattr(self, "_luz_ambiente", None)
+        if luz is not None:
+            luz.setGeometry(self.rect())
+
+    def _animar_aba(self, indice: int) -> None:
+        if not hasattr(self, "_abas_principais"):
+            return
+
+        pagina = self._abas_principais.widget(indice)
+        if pagina is None:
+            return
+
+        efeito = pagina.graphicsEffect()
+        if not isinstance(efeito, QGraphicsOpacityEffect):
+            efeito = QGraphicsOpacityEffect(pagina)
+            pagina.setGraphicsEffect(efeito)
+
+        efeito.setOpacity(0.35)
+        animacao = QPropertyAnimation(efeito, b"opacity", pagina)
+        animacao.setDuration(180)
+        animacao.setStartValue(0.35)
+        animacao.setEndValue(1.0)
+        animacao.setEasingCurve(QEasingCurve.Type.OutCubic)
+        animacao.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._animacao_aba = animacao
 
     def _icone_lock_layout(self, bloqueado: bool):
         estilo = self.style()
@@ -271,6 +378,8 @@ class JanelaProjeto(QDialog):
         abas.addTab(aba_config, "Resumo")
 
         # Adiciona o conjunto de abas
+        self._abas_principais = abas
+        abas.currentChanged.connect(self._animar_aba)
         layout_principal.addWidget(abas)
 
         self._construir_fluxo_geracao(layout_principal)
@@ -285,6 +394,8 @@ class JanelaProjeto(QDialog):
         self._atualizar_fluxo_geracao()
 
         self.setLayout(layout_principal)
+        self._iniciar_animacoes_ambiente()
+        QTimer.singleShot(0, lambda: self._animar_aba(abas.currentIndex()))
 
 
 
@@ -612,7 +723,7 @@ class JanelaProjeto(QDialog):
         escala_layout.setContentsMargins(0, 0, 0, 0)
         escala_layout.setSpacing(6)
 
-        self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (AZUL ESCURO)", "lbl_001")
+        self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (ROSA)", "lbl_001")
         self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (LARANJA)", "lbl_002")
         self.spin_003 = self._criar_slider_escala(escala_layout, "003", "LAYOUT 3 (VERDE)", "lbl_003")
 
@@ -717,7 +828,7 @@ class JanelaProjeto(QDialog):
         spin.setMinimum(0.01)
         spin.setMaximum(10000.00)
 
-        valor_inicial = 5000
+        valor_inicial = ref["escala_referencia"]
         spin.setValue(
             helpers.largura_a_partir_da_escala(
                 valor_inicial, ref["escala_referencia"], ref["largura_referencia"]

@@ -12,7 +12,7 @@ de estado usado na macro original, só que agora isolado da construção de
 widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 """
 
-from qgis.PyQt.QtCore import QPoint, Qt
+from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QTimer, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLabel
 from qgis.core import (
@@ -89,7 +89,6 @@ def carregar_arquivo_preview(dlg, caminho: str) -> None:
     extensao = dlg.camada_preview.extent()
     extensao.scale(5.0)
     dlg.canvas_preview.setExtent(extensao)
-    dlg.canvas_preview.zoomToFullExtent()
     dlg.canvas_preview.refresh()
 
     feicao = next(dlg.camada_preview.getFeatures(), None)
@@ -141,6 +140,79 @@ def _remover_rotulos_preview(dlg) -> None:
         except Exception:
             pass
     dlg._rotulos_preview = {}
+
+
+def _reposicionar_rotulos_preview(dlg) -> None:
+    sincronizador = getattr(dlg, "_preview_label_pan_sync", None)
+    if sincronizador is not None and sincronizador.pan_start is not None:
+        return
+
+    canvas = dlg.canvas_preview
+    for label in getattr(dlg, "_rotulos_preview", {}).values():
+        ponto = getattr(label, "_preview_ponto_mapa", None)
+        if ponto is None:
+            continue
+        try:
+            pixel = _pixel_do_mapa(canvas, ponto)
+        except Exception:
+            continue
+        label.move(round(pixel.x()) + 6, round(pixel.y()) + 6)
+        label.raise_()
+
+
+class PreviewLabelPanSync(QObject):
+    def __init__(self, dlg, parent=None):
+        super().__init__(parent)
+        self.dlg = dlg
+        self.pan_start = None
+        self.label_positions = {}
+
+    @staticmethod
+    def _event_position(event):
+        if hasattr(event, "position"):
+            return event.position().toPoint()
+        return event.pos()
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.MiddleButton:
+            self.pan_start = self._event_position(event)
+            self.label_positions = {
+                nome: label.pos()
+                for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items()
+            }
+        elif (
+            event.type() == QEvent.Type.MouseMove
+            and self.pan_start is not None
+            and event.buttons() & Qt.MouseButton.MiddleButton
+        ):
+            deslocamento = self._event_position(event) - self.pan_start
+            for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items():
+                posicao_inicial = self.label_positions.get(nome)
+                if posicao_inicial is not None:
+                    label.move(posicao_inicial + deslocamento)
+        elif event.type() == QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.MiddleButton:
+            self.pan_start = None
+            QTimer.singleShot(0, lambda: _reposicionar_rotulos_preview(self.dlg))
+        return False
+
+
+def _conectar_atualizacao_rotulos(dlg) -> None:
+    if getattr(dlg, "_preview_rotulos_conectados", False):
+        return
+
+    canvas = dlg.canvas_preview
+    canvas.extentsChanged.connect(
+        lambda *_args: _reposicionar_rotulos_preview(dlg)
+    )
+    sinal_render = getattr(canvas, "mapCanvasRefreshed", None)
+    if sinal_render is not None:
+        sinal_render.connect(
+            lambda *_args: _reposicionar_rotulos_preview(dlg)
+        )
+    sincronizador = PreviewLabelPanSync(dlg, canvas.viewport())
+    canvas.viewport().installEventFilter(sincronizador)
+    dlg._preview_label_pan_sync = sincronizador
+    dlg._preview_rotulos_conectados = True
 
 
 def _remover_aviso_preview(dlg) -> None:
@@ -245,9 +317,12 @@ class PreviewMoveTool(QgsMapToolIdentify):
 def _pixel_do_mapa(canvas, ponto: QgsPointXY):
     configuracao = getattr(canvas, "mapSettings", lambda: None)()
     if configuracao is not None and hasattr(configuracao, "mapToPixel"):
-        return configuracao.mapToPixel(ponto)
-    if hasattr(canvas, "mapToPixel"):
-        return canvas.mapToPixel(ponto)
+        try:
+            transformacao = configuracao.mapToPixel()
+            if hasattr(transformacao, "transform"):
+                return transformacao.transform(ponto)
+        except TypeError:
+            return configuracao.mapToPixel(ponto)
     if hasattr(canvas, "getCoordinateTransform"):
         try:
             transform = canvas.getCoordinateTransform()
@@ -260,29 +335,40 @@ def _pixel_do_mapa(canvas, ponto: QgsPointXY):
 def _adicionar_rotulo_preview(dlg, nome_layout: str, retangulo: QgsRectangle) -> None:
     canvas = dlg.canvas_preview
     ponto = QgsPointXY(retangulo.xMinimum(), retangulo.yMaximum())
+    _conectar_atualizacao_rotulos(dlg)
     try:
         pixel = _pixel_do_mapa(canvas, ponto)
     except Exception:
         return
 
+    cores_layout = {
+        "LAYOUT 1": "#ec008b",
+        "LAYOUT 2": "#f79138",
+        "LAYOUT 3": "#00c4d2",
+    }
+    cor_layout = cores_layout.get(nome_layout, "#1e49b1")
+    tamanho_fonte = "5pt" if nome_layout == "LAYOUT 3" else "6.5pt"
+    espacamento = "1px 2px" if nome_layout == "LAYOUT 3" else "1px 4px"
     label = QLabel(nome_layout, canvas.viewport())
     label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
     label.setStyleSheet(
         "QLabel {"
-        "  color: #111827;"
-        "  background-color: rgba(255,255,255,90);"
-        "  border: 1px solid rgba(17,24,39,60);"
-        "  border-radius: 5px;"
-        "  padding: 2px 6px;"
-        "  font-size: 9px;"
-        "  font-weight: 600;"
+        "  color: #17212b;"
+        "  background-color: rgba(255,255,255,235);"
+        f"  border: 1px solid {cor_layout};"
+        "  border-radius: 4px;"
+        f"  padding: {espacamento};"
+        f"  font-size: {tamanho_fonte};"
+        "  font-weight: 700;"
         "  qproperty-alignment: AlignCenter;"
         "}"
     )
     label.adjustSize()
-    label.move(int(pixel.x()) + 6, int(pixel.y()) + 6)
+    label._preview_ponto_mapa = ponto
+    label.move(round(pixel.x()) + 6, round(pixel.y()) + 6)
     label.raise_()
     label.show()
+    QTimer.singleShot(0, lambda: _reposicionar_rotulos_preview(dlg))
 
     rotulos = getattr(dlg, "_rotulos_preview", {})
     rotulos[nome_layout] = label
