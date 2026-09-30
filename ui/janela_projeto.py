@@ -886,12 +886,8 @@ class JanelaProjeto(QDialog):
         mapa_layout.setAlignment(estilo_box, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         escala_layout = QVBoxLayout()
-        escala_layout.setContentsMargins(10, 10, 10, 10)
-        escala_layout.setSpacing(10)
-
-        titulo_escalas = QLabel("Ajustes de escala")
-        titulo_escalas.setObjectName("scalePanelTitle")
-        escala_layout.addWidget(titulo_escalas)
+        escala_layout.setContentsMargins(14, 12, 14, 12)
+        escala_layout.setSpacing(8)
 
         self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (ROSA)", "lbl_001")
         self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (LARANJA)", "lbl_002")
@@ -904,7 +900,7 @@ class JanelaProjeto(QDialog):
         panel_escala = QWidget(mapa_container)
         panel_escala.setObjectName("scalePanel")
         panel_escala.setLayout(escala_layout)
-        panel_escala.setMinimumWidth(280)
+        panel_escala.setMinimumSize(320, 220)
         panel_escala.setMaximumWidth(360)
         panel_escala.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         panel_escala.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
@@ -1016,7 +1012,7 @@ class JanelaProjeto(QDialog):
         slider.setSingleStep(1)
         slider.setPageStep(1)
         slider.setTickPosition(QSlider.TickPosition.NoTicks)
-        slider.setMinimumHeight(18)
+        slider.setMinimumHeight(22)
 
         escala_atual = helpers.calcular_escala(
             spin.value(), ref["escala_referencia"], ref["largura_referencia"]
@@ -1042,7 +1038,7 @@ class JanelaProjeto(QDialog):
         setattr(self, nome_label, label_escala)
         label_escala.setObjectName("scaleValue")
         label_escala.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label_escala.setMinimumWidth(120)
+        label_escala.setMinimumWidth(100)
 
         cabecalho = QHBoxLayout()
         cabecalho.setContentsMargins(0, 0, 0, 0)
