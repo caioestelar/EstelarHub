@@ -276,6 +276,35 @@ class JanelaProjeto(QDialog):
         animacao.setEasingCurve(QEasingCurve.Type.OutCubic)
         animacao.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
         self._animacao_aba = animacao
+        self._animar_cartoes(pagina)
+
+    def _animar_cartoes(self, pagina: QWidget) -> None:
+        cartoes = pagina.findChildren(QGroupBox)
+        if not cartoes:
+            return
+
+        sequencia = QSequentialAnimationGroup(self)
+        for cartao in cartoes:
+            efeito = cartao.graphicsEffect()
+            if not isinstance(efeito, QGraphicsOpacityEffect):
+                efeito = QGraphicsOpacityEffect(cartao)
+                cartao.setGraphicsEffect(efeito)
+
+            efeito.setOpacity(0.2)
+            entrada = QPropertyAnimation(efeito, b"opacity", cartao)
+            entrada.setDuration(170)
+            entrada.setStartValue(0.2)
+            entrada.setEndValue(1.0)
+            entrada.setEasingCurve(QEasingCurve.Type.OutCubic)
+            pausa = QPropertyAnimation(efeito, b"opacity", cartao)
+            pausa.setDuration(45)
+            pausa.setStartValue(1.0)
+            pausa.setEndValue(1.0)
+            sequencia.addAnimation(entrada)
+            sequencia.addAnimation(pausa)
+
+        sequencia.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._animacao_cartoes = sequencia
 
     def _icone_lock_layout(self, bloqueado: bool):
         return criar_icone_estelar("lock" if bloqueado else "unlock")
@@ -561,9 +590,9 @@ class JanelaProjeto(QDialog):
         self.lbl_obra.setObjectName("fieldLabel")
         grupo_layout.addWidget(self.lbl_obra, 0, 0)
 
-        lbl_preset = QLabel("Perfil rápido")
-        lbl_preset.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_preset, 0, 1)
+        self.lbl_preset = QLabel("Perfil rápido")
+        self.lbl_preset.setObjectName("fieldLabel")
+        grupo_layout.addWidget(self.lbl_preset, 0, 1)
 
         self.cmb_obra = QComboBox()
         self.cmb_obra.setEditable(True)
@@ -573,6 +602,7 @@ class JanelaProjeto(QDialog):
         self.cmb_obra.setAccessibleDescription(
             "Obrigatório. Selecione uma obra cadastrada ou digite um nome."
         )
+        self.cmb_obra.setMaximumWidth(520)
         opcoes_obra = [f"{sigla} - {nome}" for sigla, nome in sorted(constants.OBRAS.items())]
         for texto in opcoes_obra:
             self.cmb_obra.addItem(texto)
@@ -588,6 +618,7 @@ class JanelaProjeto(QDialog):
 
         self.cmb_preset = QComboBox()
         self.cmb_preset.setAccessibleName("Perfil rápido")
+        self.cmb_preset.setMaximumWidth(240)
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
         self._carregar_preset_salvo()
@@ -604,11 +635,13 @@ class JanelaProjeto(QDialog):
         self.cmb_tipo = QComboBox()
         self.cmb_tipo.setAccessibleName("Tipo de projeto")
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
+        self.cmb_tipo.setMaximumWidth(360)
         grupo_layout.addWidget(self.cmb_tipo, 3, 0)
 
         self.cmb_zona = QComboBox()
         self.cmb_zona.setAccessibleName("Zona UTM")
         self.cmb_zona.addItems(constants.ZONAS_UTM)
+        self.cmb_zona.setMaximumWidth(240)
         self.cmb_zona.setCurrentText(
             self._variaveis_salvas.get("zona_utm") or "AUTOMÁTICO"
         )
@@ -1086,6 +1119,8 @@ class JanelaProjeto(QDialog):
             self.txt_sigla_verificacao.setVisible(ativado)
         if hasattr(self, "cmb_preset"):
             self.cmb_preset.setVisible(not ativado)
+        if hasattr(self, "lbl_preset"):
+            self.lbl_preset.setVisible(not ativado)
         if hasattr(self, "btn_ok"):
             self._atualizar_estado_botao()
 

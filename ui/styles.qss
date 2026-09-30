@@ -889,3 +889,17 @@ QScrollBar::sub-line:vertical {
     border-bottom-color: #00e5ff;
 }
 
+QComboBox::drop-down {
+    width: 28px;
+    background-color: transparent;
+    border: none;
+    border-left: 1px solid rgba(35, 106, 132, 90);
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
+}
+
+QComboBox::drop-down:hover {
+    background-color: rgba(0, 229, 255, 18);
+    border-left-color: rgba(0, 229, 255, 130);
+}
+
