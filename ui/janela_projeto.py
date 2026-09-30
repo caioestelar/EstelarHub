@@ -18,10 +18,11 @@ from qgis.PyQt.QtCore import (
     QEasingCurve,
     QSequentialAnimationGroup,
     QSettings,
+    QSize,
     QTimer,
     Qt,
 )
-from qgis.PyQt.QtGui import QColor, QPainter, QRadialGradient
+from qgis.PyQt.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, QRadialGradient
 from qgis.PyQt.QtWidgets import QGraphicsOpacityEffect
 from qgis.PyQt.QtWidgets import (
     QApplication,
@@ -41,9 +42,12 @@ from qgis.PyQt.QtWidgets import (
     QPushButton,
     QProgressBar,
     QScrollArea,
+    QSizeGrip,
     QSlider,
+    QStackedWidget,
     QTextEdit,
     QStyle,
+    QToolButton,
     QVBoxLayout,
     QWidget,
     QTabWidget
@@ -58,7 +62,72 @@ from ..core import projeto as core_projeto
 from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
 import os
-from qgis.PyQt.QtGui import QPalette, QPixmap
+from qgis.PyQt.QtGui import QPalette
+
+
+def criar_icone_estelar(nome: str, cor: str = "#00e5ff") -> QIcon:
+    """Cria ícones vetoriais compactos, consistentes e independentes de fonte."""
+    pixmap = QPixmap(24, 24)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(QColor(cor), 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    if nome == "folder":
+        painter.drawPath(_caminho_icone([(3, 7), (9, 7), (11, 9), (21, 9), (21, 19), (3, 19), (3, 7)]))
+    elif nome == "folder_open":
+        painter.drawPath(_caminho_icone([(3, 8), (9, 8), (11, 10), (20, 10), (18, 18), (4, 18), (3, 8)]))
+    elif nome == "copy":
+        painter.drawRect(8, 4, 11, 14)
+        painter.drawRect(4, 8, 11, 12)
+    elif nome == "file":
+        painter.drawPath(_caminho_icone([(6, 3), (14, 3), (19, 8), (19, 21), (6, 21), (6, 3)]))
+        painter.drawLine(14, 3, 14, 8)
+        painter.drawLine(14, 8, 19, 8)
+    elif nome == "project":
+        painter.drawRoundedRect(3, 5, 18, 14, 3, 3)
+        painter.drawEllipse(6, 10, 4, 4)
+        painter.drawLine(12, 10, 18, 10)
+        painter.drawLine(12, 14, 17, 14)
+    elif nome == "layouts":
+        painter.drawRect(3, 4, 8, 7)
+        painter.drawRect(13, 4, 8, 7)
+        painter.drawRect(3, 13, 8, 7)
+        painter.drawRect(13, 13, 8, 7)
+    elif nome == "summary":
+        painter.drawLine(5, 19, 5, 12)
+        painter.drawLine(12, 19, 12, 7)
+        painter.drawLine(19, 19, 19, 4)
+        painter.drawLine(3, 20, 21, 20)
+    elif nome == "play":
+        painter.drawPath(_caminho_icone([(8, 5), (19, 12), (8, 19), (8, 5)]))
+    elif nome == "reset":
+        painter.drawArc(4, 5, 16, 16, 45 * 16, 285 * 16)
+        painter.drawLine(5, 5, 5, 10)
+        painter.drawLine(5, 5, 10, 5)
+    elif nome == "lock":
+        painter.drawRoundedRect(6, 10, 12, 10, 2, 2)
+        painter.drawArc(8, 4, 8, 11, 0, 180 * 16)
+    elif nome == "unlock":
+        painter.drawRoundedRect(6, 10, 12, 10, 2, 2)
+        painter.drawArc(8, 4, 8, 11, 35 * 16, 145 * 16)
+    elif nome == "close":
+        painter.drawLine(6, 6, 18, 18)
+        painter.drawLine(18, 6, 6, 18)
+    elif nome == "minimize":
+        painter.drawLine(6, 12, 18, 12)
+
+    painter.end()
+    return QIcon(pixmap)
+
+
+def _caminho_icone(pontos):
+    caminho = QPainterPath()
+    caminho.moveTo(*pontos[0])
+    for ponto in pontos[1:]:
+        caminho.lineTo(*ponto)
+    return caminho
 
 
 class LuzAmbienteNeon(QWidget):
@@ -107,18 +176,10 @@ class LuzAmbienteNeon(QWidget):
 
 
 class AbaHover(QTabWidget):
-    """QTabWidget que troca de aba ao passar o mouse sobre o título."""
+    """QTabWidget com troca de conteúdo apenas por clique."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMouseTracking(True)
-        self.tabBar().setMouseTracking(True)
-
-    def mouseMoveEvent(self, event):
-        index = self.tabBar().tabAt(event.pos())
-        if index >= 0:
-            self.setCurrentIndex(index)
-        super().mouseMoveEvent(event)
 
 
 class BarraTitulo(QWidget):
@@ -217,21 +278,7 @@ class JanelaProjeto(QDialog):
         self._animacao_aba = animacao
 
     def _icone_lock_layout(self, bloqueado: bool):
-        estilo = self.style()
-
-        pixmap_class = getattr(QStyle, "StandardPixmap", None)
-        if pixmap_class is not None:
-            lock_enum = getattr(pixmap_class, "SP_LockIcon", None)
-            unlock_enum = getattr(pixmap_class, "SP_UnlockIcon", None)
-            if lock_enum is not None and unlock_enum is not None:
-                return estilo.standardIcon(lock_enum if bloqueado else unlock_enum)
-
-        if hasattr(QStyle, "SP_LockIcon") and hasattr(QStyle, "SP_UnlockIcon"):
-            return estilo.standardIcon(
-                QStyle.SP_LockIcon if bloqueado else QStyle.SP_UnlockIcon
-            )
-
-        return None
+        return criar_icone_estelar("lock" if bloqueado else "unlock")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -277,62 +324,50 @@ class JanelaProjeto(QDialog):
         self.setWindowFlags(
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
-        self.resize(760, 760)
-        self.setMinimumSize(680, 680)
-        self.setMaximumSize(960, 900)
+        self.resize(1040, 600)
+        self.setMinimumSize(840, 520)
+        self.setMaximumSize(1400, 820)
 
         layout_principal = QVBoxLayout()
-        layout_principal.setContentsMargins(14, 12, 14, 12)
-        layout_principal.setSpacing(12)
+        layout_principal.setContentsMargins(10, 8, 10, 8)
+        layout_principal.setSpacing(8)
 
         # Cabeçalho permanece fora das abas
         self._construir_cabecalho(layout_principal)
 
-        # Cria o conjunto de abas
-        abas = AbaHover()
-        abas.setMinimumHeight(500)
-
-        # ==========================
-        # ABA PROJETO
-        # ==========================
+        # Conteúdo principal: navegação lateral + páginas empilhadas.
         aba_projeto = QWidget()
         layout_projeto = QVBoxLayout()
-        layout_projeto.setContentsMargins(8, 8, 8, 8)
-        layout_projeto.setSpacing(10)
+        layout_projeto.setContentsMargins(4, 4, 4, 4)
+        layout_projeto.setSpacing(7)
 
         self._construir_campos_obra(layout_projeto)
         aba_projeto.setLayout(layout_projeto)
 
         scroll_projeto = QScrollArea()
         scroll_projeto.setWidgetResizable(True)
-        scroll_projeto.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_projeto.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_projeto.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_projeto.setWidget(aba_projeto)
 
-        # ==========================
-        # ABA LAYOUTS
-        # ==========================
         aba_layouts = QWidget()
         layout_layouts = QVBoxLayout()
-        layout_layouts.setContentsMargins(8, 8, 8, 8)
-        layout_layouts.setSpacing(10)
+        layout_layouts.setContentsMargins(4, 4, 4, 4)
+        layout_layouts.setSpacing(7)
 
         self._construir_preview(layout_layouts)
         aba_layouts.setLayout(layout_layouts)
 
         scroll_layouts = QScrollArea()
         scroll_layouts.setWidgetResizable(True)
-        scroll_layouts.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_layouts.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_layouts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_layouts.setWidget(aba_layouts)
 
-        # ==========================
-        # ABA RESUMO
-        # ==========================
         aba_config = QWidget()
         layout_config = QVBoxLayout()
-        layout_config.setContentsMargins(12, 12, 12, 12)
-        layout_config.setSpacing(12)
+        layout_config.setContentsMargins(8, 8, 8, 8)
+        layout_config.setSpacing(8)
 
         resumo = QGroupBox("Resumo do template")
         resumo.setObjectName("summaryPanel")
@@ -370,17 +405,52 @@ class JanelaProjeto(QDialog):
         layout_config.addWidget(self.log_geracao)
         aba_config.setLayout(layout_config)
 
-        # ==========================
-        # ADICIONA AS ABAS
-        # ==========================
-        abas.addTab(scroll_projeto, "Projeto")
-        abas.addTab(scroll_layouts, "Layouts")
-        abas.addTab(aba_config, "Resumo")
+        paginas = QStackedWidget()
+        paginas.setObjectName("mainStack")
+        paginas.addWidget(scroll_projeto)
+        paginas.addWidget(scroll_layouts)
+        paginas.addWidget(aba_config)
+        paginas.setMinimumHeight(360)
 
-        # Adiciona o conjunto de abas
-        self._abas_principais = abas
-        abas.currentChanged.connect(self._animar_aba)
-        layout_principal.addWidget(abas)
+        navegacao = QFrame()
+        navegacao.setObjectName("sideNav")
+        navegacao.setFixedWidth(58)
+        navegacao_layout = QVBoxLayout(navegacao)
+        navegacao_layout.setContentsMargins(6, 8, 6, 8)
+        navegacao_layout.setSpacing(8)
+
+        botoes_navegacao = []
+        itens_navegacao = [
+            ("project", "Projeto", "Dados do empreendimento e arquivo de entrada."),
+            ("layouts", "Layouts", "Preview, escalas e posições dos layouts."),
+            ("summary", "Resumo", "Resumo da configuração e log de geração."),
+        ]
+        for indice, (icone, titulo, dica) in enumerate(itens_navegacao):
+            botao = QToolButton(navegacao)
+            botao.setObjectName("sideNavButton")
+            botao.setCheckable(True)
+            botao.setAutoExclusive(True)
+            botao.setIcon(criar_icone_estelar(icone))
+            botao.setIconSize(QSize(21, 21))
+            botao.setToolTip(f"{titulo}: {dica}")
+            botao.clicked.connect(
+                lambda _checked, pagina=indice: paginas.setCurrentIndex(pagina)
+            )
+            navegacao_layout.addWidget(botao)
+            botoes_navegacao.append(botao)
+
+        navegacao_layout.addStretch()
+        botoes_navegacao[0].setChecked(True)
+        self._abas_principais = paginas
+        self._botoes_navegacao = botoes_navegacao
+        paginas.currentChanged.connect(self._animar_aba)
+
+        area_principal = QHBoxLayout()
+        area_principal.setContentsMargins(0, 0, 0, 0)
+        area_principal.setSpacing(8)
+        area_principal.addWidget(navegacao)
+        area_principal.addWidget(paginas, 1)
+        layout_principal.addLayout(area_principal, 1)
 
         self._construir_fluxo_geracao(layout_principal)
 
@@ -395,7 +465,7 @@ class JanelaProjeto(QDialog):
 
         self.setLayout(layout_principal)
         self._iniciar_animacoes_ambiente()
-        QTimer.singleShot(0, lambda: self._animar_aba(abas.currentIndex()))
+        QTimer.singleShot(0, lambda: self._animar_aba(paginas.currentIndex()))
 
 
 
@@ -453,16 +523,20 @@ class JanelaProjeto(QDialog):
         cabecalho.addLayout(textos)
         cabecalho.addStretch()
 
-        self.btn_minimizar = QPushButton("−")
+        self.btn_minimizar = QPushButton()
         self.btn_minimizar.setObjectName("btnMinimize")
         self.btn_minimizar.setFixedSize(30, 30)
+        self.btn_minimizar.setIcon(criar_icone_estelar("minimize", "#83eaff"))
+        self.btn_minimizar.setIconSize(QSize(16, 16))
         self.btn_minimizar.setToolTip("Minimizar janela")
         self.btn_minimizar.clicked.connect(self.showMinimized)
         cabecalho.addWidget(self.btn_minimizar)
 
-        self.btn_fechar = QPushButton("×")
+        self.btn_fechar = QPushButton()
         self.btn_fechar.setObjectName("btnClose")
         self.btn_fechar.setFixedSize(30, 30)
+        self.btn_fechar.setIcon(criar_icone_estelar("close", "#ffab8b"))
+        self.btn_fechar.setIconSize(QSize(16, 16))
         self.btn_fechar.setToolTip("Fechar janela")
         self.btn_fechar.clicked.connect(self.reject)
         cabecalho.addWidget(self.btn_fechar)
@@ -582,7 +656,8 @@ class JanelaProjeto(QDialog):
         layout_arquivo = QVBoxLayout()
         layout_arquivo.setSpacing(8)
 
-        self.btn_kml = QPushButton("📂 Importar KML/KMZ")
+        self.btn_kml = QPushButton("Importar KML/KMZ")
+        self.btn_kml.setIcon(criar_icone_estelar("folder"))
         self.btn_kml.setAccessibleName("Importar arquivo KML ou KMZ")
         self.btn_kml.setAccessibleDescription("Obrigatório para gerar o projeto.")
         self.btn_kml.clicked.connect(self._selecionar_arquivo)
@@ -601,6 +676,7 @@ class JanelaProjeto(QDialog):
         layout_destino.setSpacing(8)
 
         linha_destino = QHBoxLayout()
+        linha_destino.setSpacing(6)
         self.txt_pasta_projeto = QLineEdit()
         self.txt_pasta_projeto.setPlaceholderText("Escolha a pasta de destino")
         self.txt_pasta_projeto.setAccessibleName("Pasta de destino do projeto")
@@ -612,25 +688,33 @@ class JanelaProjeto(QDialog):
         linha_destino.addWidget(self.txt_pasta_projeto, 1)
 
         self.btn_pasta_projeto = QPushButton("Selecionar pasta...")
+        self.btn_pasta_projeto.setIcon(criar_icone_estelar("folder"))
         self.btn_pasta_projeto.clicked.connect(self._selecionar_pasta_projeto)
         linha_destino.addWidget(self.btn_pasta_projeto)
 
+        linha_acoes_destino = QHBoxLayout()
+        linha_acoes_destino.setSpacing(6)
+
         self.btn_abrir_pasta_projeto = QPushButton("Abrir pasta")
+        self.btn_abrir_pasta_projeto.setIcon(criar_icone_estelar("folder_open"))
         self.btn_abrir_pasta_projeto.clicked.connect(self._abrir_pasta_projeto)
-        linha_destino.addWidget(self.btn_abrir_pasta_projeto)
+        linha_acoes_destino.addWidget(self.btn_abrir_pasta_projeto)
 
         self.btn_copiar_caminho = QPushButton("Copiar caminho")
+        self.btn_copiar_caminho.setIcon(criar_icone_estelar("copy"))
         self.btn_copiar_caminho.clicked.connect(self._copiar_caminho_projeto)
-        linha_destino.addWidget(self.btn_copiar_caminho)
+        linha_acoes_destino.addWidget(self.btn_copiar_caminho)
 
         self.btn_abrir_projeto = QPushButton("Abrir projeto")
+        self.btn_abrir_projeto.setIcon(criar_icone_estelar("file"))
         self.btn_abrir_projeto.setEnabled(False)
         self.btn_abrir_projeto.clicked.connect(self._abrir_projeto_gerado)
-        linha_destino.addWidget(self.btn_abrir_projeto)
+        linha_acoes_destino.addWidget(self.btn_abrir_projeto)
 
         self.btn_copiar_caminho.setEnabled(bool(self.txt_pasta_projeto.text().strip()))
         self.btn_abrir_projeto.setEnabled(bool(self.ultimo_projeto_gerado and os.path.isfile(self.ultimo_projeto_gerado)))
         layout_destino.addLayout(linha_destino)
+        layout_destino.addLayout(linha_acoes_destino)
 
         dica_destino = QLabel(
             "O GeoPackage será copiado para uma subpasta BASES; a origem da rede não será alterada."
@@ -650,7 +734,7 @@ class JanelaProjeto(QDialog):
         grupo_layout.setSpacing(8)
 
         self.canvas_preview = QgsMapCanvas()
-        self.canvas_preview.setMinimumHeight(360)
+        self.canvas_preview.setMinimumHeight(280)
         self.canvas_preview.enableAntiAliasing(True)
         self.canvas_preview.setBackgroundRole(QPalette.ColorRole.Window)
         self.canvas_preview.viewport().setMouseTracking(True)
@@ -687,7 +771,7 @@ class JanelaProjeto(QDialog):
         self.lbl_preview.setMaximumWidth(220)
         if not self.camada_base:
             self.lbl_preview.setText(
-                "📍 PREVIEW DO EMPREENDIMENTO\n\n"
+                "PREVIEW DO EMPREENDIMENTO\n\n"
                 "Importe um KML/KMZ para carregar o empreendimento\n"
                 "e visualizar a área de estudo no mapa."
             )
@@ -756,11 +840,9 @@ class JanelaProjeto(QDialog):
         botao = getattr(self, f"lock_{chave}", None)
         if botao is not None:
             icon = self._icone_lock_layout(self._layout_locked[chave])
-            if icon is not None:
-                botao.setIcon(icon)
-                botao.setText("")
-            else:
-                botao.setText("🔒" if self._layout_locked[chave] else "🔓")
+            botao.setText("")
+            botao.setIcon(icon)
+            botao.setIconSize(QSize(16, 16))
             botao.setToolTip("Layout bloqueado" if self._layout_locked[chave] else "Layout desbloqueado")
         self._desenhar_retangulos()
 
@@ -890,13 +972,9 @@ class JanelaProjeto(QDialog):
         btn_lock.setCheckable(True)
         btn_lock.setChecked(False)
         btn_lock.setToolTip("Bloquear layout no preview")
-        icon = self._icone_lock_layout(False)
-        if icon is not None:
-            btn_lock.setText("")
-            btn_lock.setIcon(icon)
-            btn_lock.setIconSize(btn_lock.size() * 0.6)
-        else:
-            btn_lock.setText("🔓")
+        btn_lock.setText("")
+        btn_lock.setIcon(self._icone_lock_layout(False))
+        btn_lock.setIconSize(QSize(16, 16))
         btn_lock.clicked.connect(lambda _checked, k=chave: self._alternar_lock_layout(k))
         cabecalho.addWidget(btn_lock)
         setattr(self, f"lock_{chave}", btn_lock)
@@ -984,11 +1062,13 @@ class JanelaProjeto(QDialog):
         botoes.setSpacing(10)
 
         self.btn_ok = QPushButton("Gerar projeto")
+        self.btn_ok.setIcon(criar_icone_estelar("play", "#ffffff"))
         self.btn_ok.setObjectName("btnGerar")
         self.btn_ok.clicked.connect(self.accept)
         botoes.addWidget(self.btn_ok, 2)
 
         self.btn_reset = QPushButton("Resetar template")
+        self.btn_reset.setIcon(criar_icone_estelar("reset", "#ffab8b"))
         self.btn_reset.setObjectName("btnReset")
         self.btn_reset.clicked.connect(self._resetar_template)
         botoes.addWidget(self.btn_reset, 1)
@@ -1121,9 +1201,14 @@ class JanelaProjeto(QDialog):
         self._definir_estado_validacao(self.btn_kml, not arquivo_ok)
         self._definir_estado_validacao(self.txt_pasta_projeto, not destino_ok)
         self.btn_ok.setEnabled(botao_liberado)
-        self.btn_ok.setText(
-            "Gerar projeto" if botao_liberado else "🔒 Gerar projeto"
+        self.btn_ok.setText("Gerar projeto")
+        self.btn_ok.setIcon(
+            criar_icone_estelar(
+                "play" if botao_liberado else "lock",
+                "#ffffff" if botao_liberado else "#66818c",
+            )
         )
+        self.btn_ok.setIconSize(QSize(18, 18))
         self.btn_ok.setToolTip(
             "Projeto pronto para gerar."
             if botao_liberado
@@ -1233,10 +1318,21 @@ class JanelaProjeto(QDialog):
         self.lbl_status.setText(mensagem)
 
     def _construir_rodape(self, layout: QVBoxLayout) -> None:
+        linha_rodape = QHBoxLayout()
+        linha_rodape.setContentsMargins(0, 0, 0, 0)
+        linha_rodape.setSpacing(4)
+
         rodape = QLabel(constants.RODAPE_TEXTO)
         rodape.setObjectName("footerNote")
         rodape.setAlignment(Qt.AlignmentFlag.AlignRight)
-        layout.addWidget(rodape)
+        linha_rodape.addWidget(rodape, 1)
+
+        self._alca_redimensionamento = QSizeGrip(self)
+        self._alca_redimensionamento.setObjectName("windowResizeGrip")
+        self._alca_redimensionamento.setFixedSize(16, 16)
+        self._alca_redimensionamento.setToolTip("Redimensionar janela")
+        linha_rodape.addWidget(self._alca_redimensionamento, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+        layout.addLayout(linha_rodape)
 
     # ------------------------------------------------------------------
     # Eventos / delegação para o pacote core

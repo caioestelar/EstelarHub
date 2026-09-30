@@ -818,3 +818,74 @@ QSlider::handle:horizontal {
     border-radius: 8px;
 }
 
+QGroupBox {
+    margin-top: 10px;
+    padding: 8px 8px 7px 8px;
+}
+
+QScrollBar:vertical {
+    width: 7px;
+    background: #08131e;
+    margin: 2px 0px 2px 2px;
+}
+
+QScrollBar::handle:vertical {
+    min-height: 28px;
+    background: #15516a;
+    border-radius: 3px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #00a9cf;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+#sideNav {
+    background-color: #090f17;
+    border: 1px solid #153b50;
+    border-radius: 10px;
+}
+
+#sideNavButton {
+    min-width: 42px;
+    max-width: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    padding: 0px;
+    background-color: #0b1722;
+    border: 1px solid #163b50;
+    border-radius: 9px;
+}
+
+#sideNavButton:hover {
+    background-color: #10364c;
+    border-color: #00a9cf;
+}
+
+#sideNavButton:checked {
+    background-color: #0b3146;
+    border: 1px solid #00e5ff;
+}
+
+#mainStack {
+    background-color: #080e16;
+    border: 1px solid #153b50;
+    border-radius: 10px;
+}
+
+#windowResizeGrip {
+    background-color: transparent;
+    border-right: 2px solid #17607d;
+    border-bottom: 2px solid #17607d;
+    border-bottom-right-radius: 3px;
+}
+
+#windowResizeGrip:hover {
+    border-right-color: #00e5ff;
+    border-bottom-color: #00e5ff;
+}
+

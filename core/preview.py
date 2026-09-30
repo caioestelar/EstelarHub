@@ -37,7 +37,7 @@ def montar_texto_preview(dados: dict) -> str:
     linha errada).
     """
     return (
-        "📋 PREVIEW DO EMPREENDIMENTO\n\n"
+        "PREVIEW DO EMPREENDIMENTO\n\n"
         f"Obra: {dados.get('obra', '-')}\n"
         f"Tipo: {dados.get('tipo', '-')}\n"
         f"Município: {dados.get('municipio', '-')}\n"
@@ -391,7 +391,7 @@ def _atualizar_aviso_preview(dlg, retangulos):
     if any(retangulo.contains(ponto) for retangulo in retangulos):
         return
 
-    aviso = QLabel("⚠ A usina está fora dos previews.", dlg.canvas_preview.viewport())
+    aviso = QLabel("ATENÇÃO  |  A usina está fora dos previews.", dlg.canvas_preview.viewport())
     aviso.setObjectName("previewWarning")
     aviso.setStyleSheet(
         "QLabel {"
