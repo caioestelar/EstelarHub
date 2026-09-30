@@ -61,7 +61,7 @@ import os
 from qgis.PyQt.QtGui import QPalette
 
 
-def criar_icone_estelar(nome: str, cor: str = "#00e5ff") -> QIcon:
+def criar_icone_estelar(nome: str, cor: str = "#3b82f6") -> QIcon:
     """Cria ícones vetoriais compactos, consistentes e independentes de fonte."""
     pixmap = QPixmap(24, 24)
     pixmap.fill(Qt.GlobalColor.transparent)
@@ -342,106 +342,161 @@ class JanelaProjeto(QDialog):
         self.setWindowFlags(
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
-        self.resize(1040, 600)
-        self.setMinimumSize(840, 520)
-        self.setMaximumSize(1400, 820)
+        tela = QApplication.primaryScreen()
+        if tela is None:
+            self.resize(1380, 760)
+        else:
+            area = tela.availableGeometry()
+            self.resize(
+                min(1380, max(900, area.width() - 40)),
+                min(760, max(560, area.height() - 80)),
+            )
+        self.setMinimumSize(900, 560)
+        self.setMaximumSize(1760, 1024)
 
         layout_principal = QVBoxLayout()
-        layout_principal.setContentsMargins(8, 6, 8, 6)
-        layout_principal.setSpacing(6)
+        layout_principal.setContentsMargins(0, 0, 0, 0)
+        layout_principal.setSpacing(0)
 
         # Cabeçalho permanece fora das abas
         self._construir_cabecalho(layout_principal)
 
-        # Hub principal: configuração, mapa e resumo convivem na mesma tela.
+        # Workspace principal: formulário, preview cartográfico e validação.
         aba_projeto = QWidget()
         layout_projeto = QVBoxLayout()
-        layout_projeto.setContentsMargins(4, 4, 4, 4)
-        layout_projeto.setSpacing(7)
+        layout_projeto.setContentsMargins(10, 10, 10, 8)
+        layout_projeto.setSpacing(8)
 
         self._construir_campos_obra(layout_projeto)
         aba_projeto.setLayout(layout_projeto)
 
         scroll_projeto = QScrollArea()
         scroll_projeto.setWidgetResizable(True)
+        scroll_projeto.setFrameShape(QFrame.Shape.NoFrame)
         scroll_projeto.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_projeto.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_projeto.setWidget(aba_projeto)
 
         aba_layouts = QWidget()
         layout_layouts = QVBoxLayout()
-        layout_layouts.setContentsMargins(4, 4, 4, 4)
-        layout_layouts.setSpacing(7)
+        layout_layouts.setContentsMargins(14, 14, 14, 14)
+        layout_layouts.setSpacing(10)
 
         self._construir_preview(layout_layouts)
         aba_layouts.setLayout(layout_layouts)
 
         scroll_layouts = QScrollArea()
         scroll_layouts.setWidgetResizable(True)
+        scroll_layouts.setFrameShape(QFrame.Shape.NoFrame)
         scroll_layouts.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_layouts.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_layouts.setWidget(aba_layouts)
 
         aba_config = QWidget()
         layout_config = QVBoxLayout()
-        layout_config.setContentsMargins(8, 8, 8, 8)
-        layout_config.setSpacing(8)
+        layout_config.setContentsMargins(12, 16, 12, 12)
+        layout_config.setSpacing(12)
 
-        resumo = QGroupBox("Resumo do template")
-        resumo.setObjectName("summaryPanel")
-        resumo_layout = QVBoxLayout()
-        resumo_layout.setSpacing(6)
-        for texto in [
-            "• Validação da obra e do arquivo de entrada.",
-            "• Detecção automática do município, UF e zona UTM.",
-            "• Atualização do preview e dos layouts de impressão.",
-            "• Reset do template com confirmação antes da execução.",
-        ]:
-            label = QLabel(texto)
-            label.setObjectName("summaryItem")
-            resumo_layout.addWidget(label)
-        resumo.setLayout(resumo_layout)
-        layout_config.addWidget(resumo)
+        self._itens_validacao = {}
+        painel_validacao = QGroupBox()
+        painel_validacao.setObjectName("validationPanel")
+        layout_validacao = QVBoxLayout(painel_validacao)
+        layout_validacao.setContentsMargins(0, 0, 0, 0)
+        layout_validacao.setSpacing(10)
+
+        cabecalho_validacao = QHBoxLayout()
+        cabecalho_validacao.setContentsMargins(0, 0, 0, 2)
+        cabecalho_validacao.setSpacing(8)
+        titulo_validacao = QLabel("VALIDAÇÃO")
+        titulo_validacao.setObjectName("panelHeading")
+        cabecalho_validacao.addWidget(titulo_validacao)
+        cabecalho_validacao.addStretch()
+        self.lbl_percentual_validacao = QLabel("0%")
+        self.lbl_percentual_validacao.setObjectName("validationScore")
+        self.lbl_percentual_validacao.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cabecalho_validacao.addWidget(self.lbl_percentual_validacao)
+        layout_validacao.addLayout(cabecalho_validacao)
+
+        for chave, texto in (
+            ("obra", "Nome da obra"),
+            ("arquivo", "Arquivo KML/KMZ"),
+            ("destino", "Pasta de destino"),
+        ):
+            linha_validacao = QFrame()
+            linha_validacao.setObjectName("validationRow")
+            linha_validacao.setProperty("state", "pending")
+            layout_linha = QHBoxLayout(linha_validacao)
+            layout_linha.setContentsMargins(10, 6, 10, 6)
+            layout_linha.setSpacing(9)
+
+            indicador = QLabel("–")
+            indicador.setObjectName("validationIndicator")
+            indicador.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            indicador.setAccessibleName(f"Estado: {texto}")
+            layout_linha.addWidget(indicador)
+
+            rotulo_validacao = QLabel(texto)
+            rotulo_validacao.setObjectName("validationLabel")
+            layout_linha.addWidget(rotulo_validacao, 1)
+            layout_validacao.addWidget(linha_validacao)
+            self._itens_validacao[chave] = (
+                linha_validacao, indicador, rotulo_validacao
+            )
+
+        layout_config.addWidget(painel_validacao)
 
         self.resumo_geracao = QGroupBox("Resumo da geração")
         self.resumo_geracao.setObjectName("summaryPanel")
+        self.resumo_geracao.setMaximumHeight(170)
         layout_resumo_geracao = QVBoxLayout()
         self.lbl_resumo_geracao = QLabel()
         self.lbl_resumo_geracao.setWordWrap(True)
-        self.lbl_resumo_geracao.setObjectName("previewInfo")
+        self.lbl_resumo_geracao.setObjectName("summaryInfo")
         layout_resumo_geracao.addWidget(self.lbl_resumo_geracao)
         self.resumo_geracao.setLayout(layout_resumo_geracao)
         layout_config.addWidget(self.resumo_geracao)
         self._atualizar_resumo_geracao()
 
+        titulo_log = QLabel("LOG DO SISTEMA")
+        titulo_log.setObjectName("logHeading")
+        layout_config.addWidget(titulo_log)
+
         self.log_geracao = QTextEdit()
         self.log_geracao.setReadOnly(True)
-        self.log_geracao.setMaximumHeight(150)
-        self.log_geracao.setPlaceholderText("Log da geração...")
+        self.log_geracao.setMinimumHeight(140)
+        self.log_geracao.setPlaceholderText("Log do sistema...")
         self.log_geracao.setObjectName("logPanel")
         self._adicionar_log("Sistema pronto. Aguardando a geração do projeto.")
-        layout_config.addWidget(self.log_geracao)
+        layout_config.addWidget(self.log_geracao, 1)
         aba_config.setLayout(layout_config)
+
+        scroll_validacao = QScrollArea()
+        scroll_validacao.setObjectName("validationPane")
+        scroll_validacao.setWidgetResizable(True)
+        scroll_validacao.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_validacao.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_validacao.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_validacao.setWidget(aba_config)
 
         hub = QWidget()
         hub.setObjectName("hubSurface")
         hub_layout = QGridLayout(hub)
         hub_layout.setContentsMargins(0, 0, 0, 0)
-        hub_layout.setHorizontalSpacing(6)
-        hub_layout.setVerticalSpacing(6)
-        hub_layout.setColumnMinimumWidth(0, 320)
+        hub_layout.setHorizontalSpacing(0)
+        hub_layout.setVerticalSpacing(0)
+        hub_layout.setColumnMinimumWidth(0, 220)
         hub_layout.setColumnMinimumWidth(1, 400)
-        hub_layout.setColumnMinimumWidth(2, 230)
+        hub_layout.setColumnMinimumWidth(2, 220)
         hub_layout.setColumnStretch(0, 3)
-        hub_layout.setColumnStretch(1, 5)
-        hub_layout.setColumnStretch(2, 2)
+        hub_layout.setColumnStretch(1, 8)
+        hub_layout.setColumnStretch(2, 3)
 
         scroll_projeto.setObjectName("hubCard")
         scroll_layouts.setObjectName("hubMapCard")
-        aba_config.setObjectName("hubCard")
+        aba_config.setObjectName("validationContent")
         hub_layout.addWidget(scroll_projeto, 0, 0)
         hub_layout.addWidget(scroll_layouts, 0, 1)
-        hub_layout.addWidget(aba_config, 0, 2)
+        hub_layout.addWidget(scroll_validacao, 0, 2)
         hub_layout.setRowStretch(0, 1)
         layout_principal.addWidget(hub, 1)
 
@@ -480,7 +535,7 @@ class JanelaProjeto(QDialog):
         barra.setObjectName("titleBar")
         barra.setMinimumHeight(58)
         cabecalho = QHBoxLayout(barra)
-        cabecalho.setContentsMargins(10, 4, 8, 4)
+        cabecalho.setContentsMargins(18, 4, 14, 4)
         cabecalho.setSpacing(10)
 
         logo = QLabel()
@@ -519,7 +574,7 @@ class JanelaProjeto(QDialog):
         self.btn_minimizar = QPushButton()
         self.btn_minimizar.setObjectName("btnMinimize")
         self.btn_minimizar.setFixedSize(30, 30)
-        self.btn_minimizar.setIcon(criar_icone_estelar("minimize", "#83eaff"))
+        self.btn_minimizar.setIcon(criar_icone_estelar("minimize", "#a6a6aa"))
         self.btn_minimizar.setIconSize(QSize(16, 16))
         self.btn_minimizar.setToolTip("Minimizar janela")
         self.btn_minimizar.clicked.connect(self.showMinimized)
@@ -528,7 +583,7 @@ class JanelaProjeto(QDialog):
         self.btn_fechar = QPushButton()
         self.btn_fechar.setObjectName("btnClose")
         self.btn_fechar.setFixedSize(30, 30)
-        self.btn_fechar.setIcon(criar_icone_estelar("close", "#ffab8b"))
+        self.btn_fechar.setIcon(criar_icone_estelar("close", "#a6a6aa"))
         self.btn_fechar.setIconSize(QSize(16, 16))
         self.btn_fechar.setToolTip("Fechar janela")
         self.btn_fechar.clicked.connect(self.reject)
@@ -543,14 +598,24 @@ class JanelaProjeto(QDialog):
         layout.addWidget(divisor)
 
     def _construir_campos_obra(self, layout: QVBoxLayout) -> None:
+        cabecalho_painel = QHBoxLayout()
+        cabecalho_painel.setContentsMargins(0, 0, 0, 2)
+        titulo_painel = QLabel("CONFIGURAÇÃO")
+        titulo_painel.setObjectName("sidePanelHeading")
+        cabecalho_painel.addWidget(titulo_painel)
+        cabecalho_painel.addStretch()
+        rascunho = QLabel("Rascunho")
+        rascunho.setObjectName("statusPill")
+        cabecalho_painel.addWidget(rascunho)
+        layout.addLayout(cabecalho_painel)
+
         grupo_projeto = QGroupBox("Dados do projeto")
         grupo_layout = QGridLayout()
-        grupo_layout.setColumnStretch(0, 2)
-        grupo_layout.setColumnStretch(1, 1)
+        grupo_layout.setContentsMargins(2, 4, 2, 2)
+        grupo_layout.setColumnStretch(0, 1)
         grupo_layout.setColumnMinimumWidth(0, 0)
-        grupo_layout.setColumnMinimumWidth(1, 0)
-        grupo_layout.setHorizontalSpacing(8)
-        grupo_layout.setVerticalSpacing(6)
+        grupo_layout.setHorizontalSpacing(4)
+        grupo_layout.setVerticalSpacing(4)
 
         self.lbl_obra = QLabel("Nome da obra *")
         self.lbl_obra.setObjectName("fieldLabel")
@@ -558,7 +623,7 @@ class JanelaProjeto(QDialog):
 
         self.lbl_preset = QLabel("Perfil rápido")
         self.lbl_preset.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_preset, 0, 1)
+        grupo_layout.addWidget(self.lbl_preset, 2, 0)
 
         self.cmb_obra = QComboBox()
         self.cmb_obra.setEditable(True)
@@ -568,7 +633,6 @@ class JanelaProjeto(QDialog):
         self.cmb_obra.setAccessibleDescription(
             "Obrigatório. Selecione uma obra cadastrada ou digite um nome."
         )
-        self.cmb_obra.setMaximumWidth(220)
         opcoes_obra = [f"{sigla} - {nome}" for sigla, nome in sorted(constants.OBRAS.items())]
         for texto in opcoes_obra:
             self.cmb_obra.addItem(texto)
@@ -584,34 +648,31 @@ class JanelaProjeto(QDialog):
 
         self.cmb_preset = QComboBox()
         self.cmb_preset.setAccessibleName("Perfil rápido")
-        self.cmb_preset.setMaximumWidth(140)
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
         self._carregar_preset_salvo()
-        grupo_layout.addWidget(self.cmb_preset, 1, 1)
+        grupo_layout.addWidget(self.cmb_preset, 3, 0)
 
         lbl_tipo = QLabel("Tipo de projeto")
         lbl_tipo.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_tipo, 2, 0)
+        grupo_layout.addWidget(lbl_tipo, 4, 0)
 
         lbl_zona = QLabel("Zona UTM")
         lbl_zona.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_zona, 2, 1)
+        grupo_layout.addWidget(lbl_zona, 6, 0)
 
         self.cmb_tipo = QComboBox()
         self.cmb_tipo.setAccessibleName("Tipo de projeto")
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
-        self.cmb_tipo.setMaximumWidth(180)
-        grupo_layout.addWidget(self.cmb_tipo, 3, 0)
+        grupo_layout.addWidget(self.cmb_tipo, 5, 0)
 
         self.cmb_zona = QComboBox()
         self.cmb_zona.setAccessibleName("Zona UTM")
         self.cmb_zona.addItems(constants.ZONAS_UTM)
-        self.cmb_zona.setMaximumWidth(140)
         self.cmb_zona.setCurrentText(
             self._variaveis_salvas.get("zona_utm") or "AUTOMÁTICO"
         )
-        grupo_layout.addWidget(self.cmb_zona, 3, 1)
+        grupo_layout.addWidget(self.cmb_zona, 7, 0)
 
         self.cmb_obra.currentIndexChanged.connect(self._atualizar_preview)
         self.cmb_obra.currentTextChanged.connect(self._atualizar_estado_botao)
@@ -624,27 +685,27 @@ class JanelaProjeto(QDialog):
         self.chk_modo_avancado = QCheckBox("Modo avançado")
         self.chk_modo_avancado.toggled.connect(self._alternar_modo_avancado)
         self.chk_modo_avancado.toggled.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.chk_modo_avancado, 4, 0, 1, 2)
+        grupo_layout.addWidget(self.chk_modo_avancado, 8, 0)
 
         self.lbl_sigla_projetista = QLabel("Sigla projetista")
         self.lbl_sigla_projetista.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_sigla_projetista, 5, 0)
+        grupo_layout.addWidget(self.lbl_sigla_projetista, 9, 0)
 
         self.lbl_sigla_verificacao = QLabel("Sigla verificação")
         self.lbl_sigla_verificacao.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_sigla_verificacao, 5, 1)
+        grupo_layout.addWidget(self.lbl_sigla_verificacao, 11, 0)
 
         self.txt_sigla_projetista = QLineEdit()
         self.txt_sigla_projetista.setPlaceholderText("Ex.: CCC")
         self.txt_sigla_projetista.setAccessibleName("Sigla projetista")
         self.txt_sigla_projetista.textChanged.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.txt_sigla_projetista, 6, 0)
+        grupo_layout.addWidget(self.txt_sigla_projetista, 10, 0)
 
         self.txt_sigla_verificacao = QLineEdit()
         self.txt_sigla_verificacao.setPlaceholderText("Ex.: JRM")
         self.txt_sigla_verificacao.setAccessibleName("Sigla verificação")
         self.txt_sigla_verificacao.textChanged.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.txt_sigla_verificacao, 6, 1)
+        grupo_layout.addWidget(self.txt_sigla_verificacao, 12, 0)
 
         self._alternar_modo_avancado(False)
 
@@ -653,10 +714,11 @@ class JanelaProjeto(QDialog):
 
         grupo_arquivo = QGroupBox("Arquivo de entrada *")
         layout_arquivo = QVBoxLayout()
-        layout_arquivo.setSpacing(8)
+        layout_arquivo.setSpacing(6)
 
         self.btn_kml = QPushButton("Importar KML/KMZ")
-        self.btn_kml.setIcon(criar_icone_estelar("folder"))
+        self.btn_kml.setObjectName("btnImportKml")
+        self.btn_kml.setIcon(criar_icone_estelar("folder", "#3b82f6"))
         self.btn_kml.setAccessibleName("Importar arquivo KML ou KMZ")
         self.btn_kml.setAccessibleDescription("Obrigatório para gerar o projeto.")
         self.btn_kml.clicked.connect(self._selecionar_arquivo)
@@ -672,9 +734,10 @@ class JanelaProjeto(QDialog):
 
         grupo_destino = QGroupBox("Salvar projeto em *")
         layout_destino = QVBoxLayout()
-        layout_destino.setSpacing(8)
+        layout_destino.setSpacing(6)
 
         linha_destino = QHBoxLayout()
+        linha_destino.setContentsMargins(0, 0, 0, 0)
         linha_destino.setSpacing(6)
         self.txt_pasta_projeto = QLineEdit()
         self.txt_pasta_projeto.setPlaceholderText("Escolha a pasta de destino")
@@ -686,9 +749,13 @@ class JanelaProjeto(QDialog):
         self.txt_pasta_projeto.textChanged.connect(self._salvar_configuracao_destino)
         linha_destino.addWidget(self.txt_pasta_projeto, 1)
 
-        self.btn_pasta_projeto = QPushButton("Selecionar pasta...")
-        self.btn_pasta_projeto.setIcon(criar_icone_estelar("folder"))
-        self.btn_pasta_projeto.setMaximumWidth(132)
+        self.btn_pasta_projeto = QPushButton()
+        self.btn_pasta_projeto.setObjectName("folderPickerButton")
+        self.btn_pasta_projeto.setIcon(criar_icone_estelar("folder", "#3b82f6"))
+        self.btn_pasta_projeto.setIconSize(QSize(16, 16))
+        self.btn_pasta_projeto.setFixedSize(34, 32)
+        self.btn_pasta_projeto.setAccessibleName("Selecionar pasta de destino")
+        self.btn_pasta_projeto.setToolTip("Selecionar pasta de destino")
         self.btn_pasta_projeto.clicked.connect(self._selecionar_pasta_projeto)
         linha_destino.addWidget(self.btn_pasta_projeto)
 
@@ -696,21 +763,31 @@ class JanelaProjeto(QDialog):
         linha_acoes_destino.setHorizontalSpacing(6)
         linha_acoes_destino.setVerticalSpacing(6)
 
-        self.btn_abrir_pasta_projeto = QPushButton("Abrir pasta")
-        self.btn_abrir_pasta_projeto.setIcon(criar_icone_estelar("folder_open"))
-        self.btn_abrir_pasta_projeto.setMaximumWidth(150)
+        self.btn_abrir_pasta_projeto = QPushButton()
+        self.btn_abrir_pasta_projeto.setObjectName("openProjectFolderButton")
+        self.btn_abrir_pasta_projeto.setIcon(criar_icone_estelar("folder_open", "#3b82f6"))
+        self.btn_abrir_pasta_projeto.setIconSize(QSize(16, 16))
+        self.btn_abrir_pasta_projeto.setFixedSize(34, 32)
+        self.btn_abrir_pasta_projeto.setAccessibleName("Abrir pasta do projeto")
+        self.btn_abrir_pasta_projeto.setToolTip("Abrir pasta do projeto")
         self.btn_abrir_pasta_projeto.clicked.connect(self._abrir_pasta_projeto)
         linha_acoes_destino.addWidget(self.btn_abrir_pasta_projeto, 0, 0)
 
-        self.btn_copiar_caminho = QPushButton("Copiar caminho")
-        self.btn_copiar_caminho.setIcon(criar_icone_estelar("copy"))
-        self.btn_copiar_caminho.setMaximumWidth(150)
+        self.btn_copiar_caminho = QPushButton()
+        self.btn_copiar_caminho.setObjectName("copyProjectPathButton")
+        self.btn_copiar_caminho.setIcon(criar_icone_estelar("copy", "#a6a6aa"))
+        self.btn_copiar_caminho.setIconSize(QSize(16, 16))
+        self.btn_copiar_caminho.setFixedSize(34, 32)
+        self.btn_copiar_caminho.setAccessibleName("Copiar caminho da pasta de destino")
+        self.btn_copiar_caminho.setToolTip("Copiar caminho")
         self.btn_copiar_caminho.clicked.connect(self._copiar_caminho_projeto)
         linha_acoes_destino.addWidget(self.btn_copiar_caminho, 0, 1)
 
         self.btn_abrir_projeto = QPushButton("Abrir projeto")
-        self.btn_abrir_projeto.setIcon(criar_icone_estelar("file"))
+        self.btn_abrir_projeto.setIcon(criar_icone_estelar("file", "#a6a6aa"))
         self.btn_abrir_projeto.setMaximumWidth(300)
+        self.btn_abrir_projeto.setAccessibleName("Abrir o último projeto gerado")
+        self.btn_abrir_projeto.setToolTip("Gere um projeto antes de abri-lo")
         self.btn_abrir_projeto.setEnabled(False)
         self.btn_abrir_projeto.clicked.connect(self._abrir_projeto_gerado)
         linha_acoes_destino.addWidget(self.btn_abrir_projeto, 1, 0, 1, 2)
@@ -738,7 +815,8 @@ class JanelaProjeto(QDialog):
         grupo_layout.setSpacing(8)
 
         self.canvas_preview = QgsMapCanvas()
-        self.canvas_preview.setMinimumHeight(280)
+        self.canvas_preview.setObjectName("mapCanvas")
+        self.canvas_preview.setMinimumHeight(360)
         self.canvas_preview.enableAntiAliasing(True)
         self.canvas_preview.setBackgroundRole(QPalette.ColorRole.Window)
         self.canvas_preview.viewport().setMouseTracking(True)
@@ -779,7 +857,7 @@ class JanelaProjeto(QDialog):
                 "Importe um KML/KMZ para carregar o empreendimento\n"
                 "e visualizar a área de estudo no mapa."
             )
-        preview_layout.addWidget(self.lbl_preview, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        preview_layout.addWidget(self.lbl_preview, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         estilo_box = QWidget(mapa_container)
         estilo_box.setObjectName("mapStylePanel")
@@ -805,11 +883,15 @@ class JanelaProjeto(QDialog):
         estilo_layout.addWidget(lbl_estilo)
         estilo_layout.addWidget(self.cmb_estilo_mapa)
         mapa_layout.addWidget(estilo_box, 0, 0)
-        mapa_layout.setAlignment(estilo_box, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        mapa_layout.setAlignment(estilo_box, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         escala_layout = QVBoxLayout()
-        escala_layout.setContentsMargins(0, 0, 0, 0)
-        escala_layout.setSpacing(6)
+        escala_layout.setContentsMargins(10, 10, 10, 10)
+        escala_layout.setSpacing(10)
+
+        titulo_escalas = QLabel("Ajustes de escala")
+        titulo_escalas.setObjectName("scalePanelTitle")
+        escala_layout.addWidget(titulo_escalas)
 
         self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (ROSA)", "lbl_001")
         self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (LARANJA)", "lbl_002")
@@ -822,12 +904,12 @@ class JanelaProjeto(QDialog):
         panel_escala = QWidget(mapa_container)
         panel_escala.setObjectName("scalePanel")
         panel_escala.setLayout(escala_layout)
-        panel_escala.setMinimumWidth(260)
-        panel_escala.setMaximumWidth(320)
+        panel_escala.setMinimumWidth(280)
+        panel_escala.setMaximumWidth(360)
         panel_escala.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         panel_escala.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         mapa_layout.addWidget(panel_escala, 0, 0)
-        mapa_layout.setAlignment(panel_escala, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft)
+        mapa_layout.setAlignment(panel_escala, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
         panel_escala.raise_()
 
         mapa_layout.addWidget(preview_overlay, 0, 0)
@@ -990,15 +1072,15 @@ class JanelaProjeto(QDialog):
         linha.setSpacing(8)
         linha.addWidget(slider, 1)
 
-        card = QFrame()
-        card.setObjectName("layoutCard")
-        card_layout = QVBoxLayout()
-        card_layout.setContentsMargins(8, 8, 8, 8)
-        card_layout.setSpacing(6)
-        card_layout.addLayout(cabecalho)
-        card_layout.addLayout(linha)
-        card.setLayout(card_layout)
-        layout.addWidget(card)
+        scale_row = QWidget()
+        scale_row.setObjectName("scaleRow")
+        scale_row.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        row_layout = QVBoxLayout(scale_row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(5)
+        row_layout.addLayout(cabecalho)
+        row_layout.addLayout(linha)
+        layout.addWidget(scale_row)
 
         return spin
 
@@ -1062,22 +1144,26 @@ class JanelaProjeto(QDialog):
                     titulo.style().polish(titulo)
 
     def _construir_botoes(self, layout: QVBoxLayout) -> None:
-        botoes = QHBoxLayout()
-        botoes.setSpacing(10)
+        barra_acoes = QWidget()
+        barra_acoes.setObjectName("actionBar")
+        botoes = QHBoxLayout(barra_acoes)
+        botoes.setContentsMargins(22, 10, 24, 10)
+        botoes.setSpacing(12)
+
+        self.btn_reset = QPushButton("Resetar template")
+        self.btn_reset.setIcon(criar_icone_estelar("reset", "#a6a6aa"))
+        self.btn_reset.setObjectName("btnReset")
+        self.btn_reset.clicked.connect(self._resetar_template)
+        botoes.addWidget(self.btn_reset, 0, Qt.AlignmentFlag.AlignVCenter)
+        botoes.addStretch(1)
 
         self.btn_ok = QPushButton("Gerar projeto")
         self.btn_ok.setIcon(criar_icone_estelar("play", "#ffffff"))
         self.btn_ok.setObjectName("btnGerar")
         self.btn_ok.clicked.connect(self.accept)
-        botoes.addWidget(self.btn_ok, 2)
+        botoes.addWidget(self.btn_ok, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-        self.btn_reset = QPushButton("Resetar template")
-        self.btn_reset.setIcon(criar_icone_estelar("reset", "#ffab8b"))
-        self.btn_reset.setObjectName("btnReset")
-        self.btn_reset.clicked.connect(self._resetar_template)
-        botoes.addWidget(self.btn_reset, 1)
-
-        layout.addLayout(botoes)
+        layout.addWidget(barra_acoes)
 
     def _alternar_modo_avancado(self, ativado: bool) -> None:
         if hasattr(self, "lbl_sigla_projetista"):
@@ -1226,8 +1312,47 @@ class JanelaProjeto(QDialog):
         else:
             self.lbl_status.setText("Para liberar a geração: " + "; ".join(pendencias) + ".")
 
+        self._atualizar_painel_validacao(
+            obra_ok=projeto_ok,
+            arquivo_ok=arquivo_ok,
+            destino_ok=destino_ok,
+        )
         self._atualizar_fluxo_geracao()
         self._atualizar_resumo_geracao()
+
+    def _atualizar_painel_validacao(
+        self,
+        obra_ok: bool,
+        arquivo_ok: bool,
+        destino_ok: bool,
+    ) -> None:
+        if not hasattr(self, "_itens_validacao"):
+            return
+
+        estados = {
+            "obra": obra_ok,
+            "arquivo": arquivo_ok,
+            "destino": destino_ok,
+        }
+        concluidos = 0
+        for chave, concluido in estados.items():
+            linha, indicador, rotulo = self._itens_validacao[chave]
+            estado = "ready" if concluido else "pending"
+            linha.setProperty("state", estado)
+            indicador.setProperty("state", estado)
+            rotulo.setProperty("state", estado)
+            indicador.setText("✓" if concluido else "–")
+            indicador.setToolTip("Concluído" if concluido else "Pendente")
+            for widget in (linha, indicador, rotulo):
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
+            concluidos += int(concluido)
+
+        percentual = round(concluidos / len(estados) * 100)
+        self.lbl_percentual_validacao.setText(f"{percentual}%")
+        self.lbl_percentual_validacao.setAccessibleName(
+            f"Validação concluída em {percentual}%"
+        )
 
     @staticmethod
     def _definir_estado_validacao(widget: QWidget, pendente: bool) -> None:
@@ -1261,7 +1386,6 @@ class JanelaProjeto(QDialog):
         pasta = self.txt_pasta_projeto.text().strip() if hasattr(self, "txt_pasta_projeto") else "não selecionada"
         zona = self.cmb_zona.currentText() if hasattr(self, "cmb_zona") else "-"
         texto = (
-            "<b>Resumo da geração</b><br>"
             f"Obra: {obra}<br>"
             f"Tipo: {tipo}<br>"
             f"Arquivo de entrada: {arquivo}<br>"
