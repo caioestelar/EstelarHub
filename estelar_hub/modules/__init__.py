@@ -1,0 +1,1 @@
+"""Standalone Hub module adapters."""

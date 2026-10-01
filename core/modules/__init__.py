@@ -1,0 +1,1 @@
+"""First-party Estelar Hub modules backed by the shared QGIS engine."""

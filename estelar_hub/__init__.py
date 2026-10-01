@@ -1,0 +1,1 @@
+"""Standalone Estelar Hub application package."""

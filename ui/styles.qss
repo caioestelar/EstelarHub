@@ -228,6 +228,339 @@ QComboBox::drop-down:hover {
     border-left-color: #3b82f6;
 }
 
+/* Estelar Hub launcher */
+QWidget#hubWorkspace {
+    background-color: #111112;
+}
+
+QFrame#hubHeader {
+    min-height: 62px;
+    background-color: #171719;
+    border-bottom: 1px solid #2b2b2d;
+}
+
+#hubBrandTitle {
+    color: #f5f5f5;
+    font-size: 12pt;
+    font-weight: 700;
+}
+
+#hubBrandSubtitle,
+#hubHeaderProject {
+    color: #858589;
+    font-size: 8pt;
+}
+
+#hubHeaderProject {
+    background-color: #202023;
+    border: 1px solid #303034;
+    border-radius: 7px;
+    padding: 6px 10px;
+}
+
+QFrame#hubSidebar {
+    background-color: #121214;
+    border-right: 1px solid #2b2b2d;
+}
+
+#hubNavHeading {
+    color: #77777b;
+    font-size: 7pt;
+    font-weight: 700;
+    padding: 3px 7px 7px 7px;
+}
+
+QPushButton#hubNavButton,
+QPushButton#hubCategoryButton {
+    min-height: 34px;
+    padding: 6px 9px;
+    text-align: left;
+    color: #a6a6aa;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: 8.5pt;
+    font-weight: 500;
+}
+
+QPushButton#hubNavButton:hover,
+QPushButton#hubCategoryButton:hover {
+    color: #eeeeef;
+    background-color: #1d1d20;
+    border-color: #2d2d31;
+}
+
+QPushButton#hubNavButton:checked {
+    color: #f2f6ff;
+    background-color: rgba(59, 130, 246, 32);
+    border: 1px solid rgba(59, 130, 246, 105);
+}
+
+QPushButton#hubCategoryButton {
+    min-height: 29px;
+    padding-left: 15px;
+    color: #87878c;
+    font-size: 8pt;
+}
+
+QScrollArea#hubMainScroll,
+QWidget#hubMainContent {
+    background-color: #111112;
+}
+
+#hubWelcomeTitle {
+    color: #f5f5f5;
+    font-size: 20pt;
+    font-weight: 650;
+}
+
+#hubWelcomeDescription,
+#hubSectionSubtitle {
+    color: #929297;
+    font-size: 9pt;
+}
+
+#hubSectionTitle {
+    color: #ededee;
+    font-size: 11pt;
+    font-weight: 650;
+}
+
+QLineEdit#hubSearch {
+    min-height: 34px;
+    color: #eeeeef;
+    background-color: #19191c;
+    border: 1px solid #323236;
+    border-radius: 8px;
+    padding: 5px 10px;
+}
+
+QLineEdit#hubSearch:focus {
+    background-color: #1c1c20;
+    border-color: #3b82f6;
+}
+
+QFrame#hubToolCard {
+    background-color: #19191b;
+    border: 1px solid #2c2c30;
+    border-radius: 10px;
+}
+
+QFrame#hubToolCard:hover {
+    background-color: #1d1d20;
+    border-color: #45454b;
+}
+
+QFrame#hubToolCard[moduleStatus="active"] {
+    border-left: 3px solid #3b82f6;
+}
+
+QFrame#hubToolCard[moduleStatus="upcoming"] {
+    border-left: 3px solid #4a4a50;
+}
+
+QFrame#hubToolIconTile {
+    min-width: 42px;
+    max-width: 42px;
+    min-height: 42px;
+    max-height: 42px;
+    background-color: #222226;
+    border: 1px solid #333338;
+    border-radius: 9px;
+}
+
+QFrame#hubToolIconTile[moduleStatus="active"] {
+    background-color: rgba(59, 130, 246, 30);
+    border-color: rgba(59, 130, 246, 95);
+}
+
+#hubCardTitle {
+    color: #ededee;
+    font-size: 9.5pt;
+    font-weight: 650;
+}
+
+#hubCardDescription {
+    color: #a1a1a6;
+    font-size: 8pt;
+}
+
+#hubStatusBadge {
+    color: #78c99e;
+    background-color: rgba(55, 145, 94, 28);
+    border: 1px solid rgba(91, 173, 126, 75);
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-size: 6.5pt;
+    font-weight: 700;
+}
+
+#hubStatusBadge[moduleStatus="upcoming"] {
+    color: #96969b;
+    background-color: #222225;
+    border-color: #343438;
+}
+
+QToolButton#hubFavoriteButton,
+QToolButton#hubSmallAction {
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    padding: 0;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+}
+
+QToolButton#hubFavoriteButton:hover,
+QToolButton#hubSmallAction:hover {
+    background-color: #29292d;
+    border-color: #3a3a40;
+}
+
+QPushButton#hubPrimaryAction,
+QPushButton#hubSecondaryAction,
+QPushButton#hubLaunchButton,
+QPushButton#hubUpcomingButton,
+QPushButton#hubFavoriteShortcut {
+    min-height: 32px;
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 8pt;
+    font-weight: 600;
+}
+
+QPushButton#hubPrimaryAction,
+QPushButton#hubLaunchButton {
+    color: #ffffff;
+    background-color: #346fce;
+    border: 1px solid #477fd4;
+}
+
+QPushButton#hubPrimaryAction:hover,
+QPushButton#hubLaunchButton:hover {
+    background-color: #3b82f6;
+    border-color: #5a94f7;
+}
+
+QPushButton#hubSecondaryAction,
+QPushButton#hubFavoriteShortcut {
+    color: #d1d1d4;
+    background-color: #202023;
+    border: 1px solid #343438;
+}
+
+QPushButton#hubSecondaryAction:hover,
+QPushButton#hubFavoriteShortcut:hover {
+    background-color: #29292d;
+    border-color: #48484e;
+}
+
+QPushButton#hubUpcomingButton:disabled {
+    color: #77777b;
+    background-color: #202023;
+    border: 1px solid #303034;
+}
+
+#hubEmptyHint {
+    color: #858589;
+    background-color: #171719;
+    border: 1px dashed #343438;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 8pt;
+}
+
+QFrame#hubRecentRow,
+QFrame#hubContextBlock,
+QFrame#hubStatBlock {
+    background-color: #19191b;
+    border: 1px solid #2c2c30;
+    border-radius: 8px;
+}
+
+#hubRecentName,
+#hubContextTitle {
+    color: #e6e6e8;
+    font-size: 8pt;
+    font-weight: 600;
+}
+
+#hubRecentPath,
+#hubContextDetail {
+    color: #8b8b90;
+    font-size: 7pt;
+}
+
+QFrame#hubStatusPanel {
+    background-color: #121214;
+    border-left: 1px solid #2b2b2d;
+}
+
+#hubSideHeading {
+    color: #ededee;
+    font-size: 11pt;
+    font-weight: 650;
+}
+
+#hubEyebrow {
+    color: #77777b;
+    font-size: 7pt;
+    font-weight: 700;
+}
+
+#hubStatValue {
+    color: #eeeeef;
+    font-size: 16pt;
+    font-weight: 650;
+}
+
+#hubStatCaption,
+#hubVersionLabel {
+    color: #8c8c91;
+    font-size: 7pt;
+}
+
+QPushButton#hubUpdateButton {
+    min-height: 28px;
+    color: #aebbd1;
+    background-color: #1b1e24;
+    border: 1px solid #303741;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 7.5pt;
+}
+
+QPushButton#hubUpdateButton:hover {
+    color: #e5edff;
+    background-color: #252c37;
+    border-color: #3b82f6;
+}
+
+#hubOnlineIndicator {
+    background-color: #4bb77a;
+    border-radius: 4px;
+}
+
+#hubDivider {
+    max-height: 1px;
+    border: none;
+    background-color: #2b2b2d;
+}
+
+QFrame#hubFooter {
+    min-height: 28px;
+    background-color: #171719;
+    border-top: 1px solid #2b2b2d;
+}
+
+#hubFooterText,
+#hubSidebarNote {
+    color: #77777b;
+    font-size: 7pt;
+}
+
 QComboBox QAbstractItemView,
 QAbstractItemView#obraCompleterPopup {
     color: #eeeeef;

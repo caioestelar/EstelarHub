@@ -1,0 +1,5 @@
+Estelar Hub includes the QGIS runtime and its third-party components.
+
+The complete QGIS installation tree is distributed under its respective open-source licenses. This installer preserves the license, copyright, and notice files shipped by the upstream QGIS installation, including the licenses for QGIS, Qt, GDAL, PROJ, Python, GRASS GIS, SAGA and bundled Python packages.
+
+The QGIS source code and project information are available at https://qgis.org/ and https://github.com/qgis/QGIS. Component-specific notices are included in the bundled runtime directories. The Estelar Hub application code is distributed separately from the QGIS runtime.

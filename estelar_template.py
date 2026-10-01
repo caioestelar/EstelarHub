@@ -20,13 +20,13 @@ import os.path
 
 from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTranslator
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from qgis.core import QgsProject, QgsSettings
+from qgis.PyQt.QtWidgets import QAction
+from qgis.core import QgsSettings
 
 from .core import projeto as core_projeto
-from .core.carregar_bases import carregar_bases_estelar
-from .ui.janela_projeto import JanelaProjeto
-from .utils import constants
+from .core.modules.mapa_acesso import abrir as abrir_mapa_acesso
+from .core.module_registry import criar_catalogo_estelar
+from .ui.hub import EstelarHubDialog
 
 class EstelarTemplate:
     """QGIS Plugin Implementation."""
@@ -46,7 +46,7 @@ class EstelarTemplate:
             QCoreApplication.installTranslator(self.translator)
 
         self.actions = []
-        self.menu = self.tr("&EstelarTemplate")
+        self.menu = self.tr("&Estelar Hub")
         self.toolbar = self.iface.addToolBar("EstelarTemplate")
         self.toolbar.setObjectName("EstelarTemplate")
 
@@ -56,6 +56,13 @@ class EstelarTemplate:
         # Substitui o timer que, na macro original, era criado dentro do
         # gatilho `closeProject()` e nunca era interrompido.
         self.timer = None
+        self.module_registry = criar_catalogo_estelar()
+        self.module_registry.register_launcher(
+            "access-map",
+            lambda context=None: self._abrir_mapa_acesso(
+                context.parent if context is not None else self.iface.mainWindow()
+            ),
+        )
 
     # ------------------------------------------------------------------
     def tr(self, message):
@@ -101,9 +108,9 @@ class EstelarTemplate:
 
         self.add_action(
             icon_path,
-            text=constants.NOME_PLUGIN,
+            text="Estelar Hub",
             callback=self.run,
-            status_tip=self.tr("Configurar o STL-TEMPLATE para este projeto"),
+            status_tip=self.tr("Abrir o workspace de ferramentas Estelar"),
             parent=self.iface.mainWindow(),
         )
 
@@ -129,18 +136,10 @@ class EstelarTemplate:
 
     # ------------------------------------------------------------------
     def run(self):
+        """Abre o Hub central de ferramentas Estelar."""
+        dlg = EstelarHubDialog(self.module_registry, self.iface.mainWindow())
+        dlg.exec()
 
-        carregar_bases_estelar()
-        """Ponto de entrada principal do plugin."""
-        projeto = QgsProject.instance()
-
-        if core_projeto.obra_ja_configurada(projeto):
-            if not core_projeto.confirmar_reconfiguracao(self.iface.mainWindow()):
-                return
-
-        dlg = JanelaProjeto(self.iface.mainWindow())
-
-        if not dlg.exec():
-            return
-
-        core_projeto.gerar_projeto(dlg)
+    def _abrir_mapa_acesso(self, parent=None):
+        """Carrega sob demanda o módulo Mapa de Acesso já existente."""
+        abrir_mapa_acesso(parent or self.iface.mainWindow())

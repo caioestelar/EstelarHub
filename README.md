@@ -1,5 +1,11 @@
 # EstelarTemplate (STL-TEMPLATE)
 
+## Estelar Hub Standalone (desenvolvimento)
+
+O repositório agora também contém a camada de aplicativo standalone. No Windows com QGIS 4 instalado, execute `run_estelar_hub.bat`; ele inicializa PyQGIS em processo, sem abrir a janela principal do QGIS, e mostra o dashboard Estelar Hub. O módulo Mapa de Acesso continua compartilhando a janela e o fluxo de geração existentes.
+
+Arquitetura, inicialização e limites atuais de empacotamento: [estelar_hub/README.md](estelar_hub/README.md). O `.bat` é o launcher de desenvolvimento; um instalador/`Estelar Hub.exe` distribuível exige empacotar o runtime QGIS/Qt/GDAL/PROJ e validar a redistribuição dessas dependências.
+
 Plugin QGIS 3.x que substitui a macro de projeto `openProject` / `saveProject`
 / `closeProject` usada pela Estelar Engenharia para padronizar o Mapa de
 Localização, os layouts de impressão, o SRC (SIRGAS 2000/UTM), o
@@ -190,5 +196,6 @@ Todas essas correções foram validadas com testes de fumaça (mocks de
 `qgis.core`/`qgis.gui`) que exercitam o fluxo completo: construção da UI,
 carregamento de KML, cálculo de escala, geração do projeto, criação da
 `AREA_ESTUDO`, recorte de camadas, reset de template e o timer periódico.
-#   E s t e l a r M a p T o o l s  
+#   E s t e l a r M a p T o o l s 
+ 
  
