@@ -165,12 +165,13 @@ class HubTitleBar(QFrame):
 
 
 class HubToolCard(QFrame):
-    def __init__(self, module, favorite, launch, toggle_favorite, parent=None):
+    def __init__(self, module, favorite, launch, toggle_favorite, can_launch=True, parent=None):
         super().__init__(parent)
         self.module = module
+        self.can_launch = bool(module.is_active and can_launch)
         self.setObjectName("hubToolCard")
         self.setProperty("moduleStatus", module.status)
-        self.setCursor(Qt.CursorShape.PointingHandCursor if module.is_active else Qt.CursorShape.ArrowCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor if self.can_launch else Qt.CursorShape.ArrowCursor)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 13, 14, 12)
@@ -228,18 +229,18 @@ class HubToolCard(QFrame):
         category.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         footer.addWidget(category)
         footer.addStretch()
-        self.launch_button = QPushButton("Abrir ferramenta" if module.is_active else "Em breve")
-        self.launch_button.setObjectName("hubLaunchButton" if module.is_active else "hubUpcomingButton")
-        self.launch_button.setIcon(criar_icone_hub("road" if module.is_active else "clock", "#ffffff" if module.is_active else "#8b8b90", 16))
+        self.launch_button = QPushButton(f"Abrir {module.name}" if self.can_launch else "Indisponível")
+        self.launch_button.setObjectName("hubLaunchButton" if self.can_launch else "hubUpcomingButton")
+        self.launch_button.setIcon(criar_icone_hub(module.icon if self.can_launch else "clock", "#ffffff" if self.can_launch else "#8b8b90", 16))
         self.launch_button.setIconSize(QSize(16, 16))
-        self.launch_button.setEnabled(module.is_active)
-        self.launch_button.setToolTip("Abrir o módulo Mapa de Acesso" if module.is_active else "Este módulo será disponibilizado futuramente")
+        self.launch_button.setEnabled(self.can_launch)
+        self.launch_button.setToolTip(f"Abrir {module.name}" if self.can_launch else "Este módulo não está disponível para abertura")
         self.launch_button.clicked.connect(lambda: launch(module.id))
         footer.addWidget(self.launch_button)
         layout.addLayout(footer)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and self.module.is_active:
+        if event.button() == Qt.MouseButton.LeftButton and self.can_launch:
             self.launch_button.click()
             event.accept()
             return
@@ -445,59 +446,42 @@ class EstelarHubDialog(QDialog):
         layout.setContentsMargins(25, 22, 25, 24)
         layout.setSpacing(18)
 
-        welcome = QWidget()
-        welcome_layout = QVBoxLayout(welcome)
-        welcome_layout.setContentsMargins(0, 0, 0, 0)
-        welcome_layout.setSpacing(5)
-        heading = QLabel("Seu espaço de trabalho")
-        heading.setObjectName("hubWelcomeTitle")
-        welcome_layout.addWidget(heading)
-        description = QLabel("Acesse ferramentas de engenharia e GIS em um só lugar.")
-        description.setObjectName("hubWelcomeDescription")
-        welcome_layout.addWidget(description)
-        layout.addWidget(welcome)
+        layout.addWidget(self._build_current_project_section())
 
-        self._section_quick = self._section_heading("Ações rápidas", "Continue seu trabalho no QGIS")
-        layout.addWidget(self._section_quick)
-        self._build_quick_actions(layout)
-
-        search_row = QHBoxLayout()
-        self.search = QLineEdit()
-        self.search.setObjectName("hubSearch")
-        self.search.setPlaceholderText("Buscar ferramentas por nome ou descrição")
-        self.search.setClearButtonEnabled(True)
-        self.search.addAction(criar_icone_hub("search", "#858589", 18), QLineEdit.ActionPosition.LeadingPosition)
-        self.search.textChanged.connect(self._apply_filter)
-        search_row.addWidget(self.search)
-        layout.addLayout(search_row)
+        self.recent_section = self._build_recent_section()
+        layout.addWidget(self.recent_section)
 
         self.favorites_section = QWidget()
         favorites_layout = QVBoxLayout(self.favorites_section)
         favorites_layout.setContentsMargins(0, 0, 0, 0)
         favorites_layout.setSpacing(9)
-        favorites_layout.addWidget(self._section_heading("Favoritos", "Suas ferramentas fixadas"))
+        favorites_layout.addWidget(self._section_heading("Favoritos", "Ferramentas fixadas para acesso rápido"))
         self._favorites_content = QHBoxLayout()
         self._favorites_content.setSpacing(8)
         favorites_layout.addLayout(self._favorites_content)
-        self._favorites_empty = QLabel("Use a estrela de um card para fixar ferramentas aqui.")
+        self._favorites_empty = QLabel("Use a estrela de uma ferramenta para fixá-la aqui.")
         self._favorites_empty.setObjectName("hubEmptyHint")
         favorites_layout.addWidget(self._favorites_empty)
         layout.addWidget(self.favorites_section)
 
+        self.search = QLineEdit()
+        self.search.setObjectName("hubSearch")
+        self.search.setPlaceholderText("Buscar módulos por nome, descrição ou categoria")
+        self.search.setAccessibleName("Buscar ferramentas")
+        self.search.setToolTip("Filtra ferramentas disponíveis e em preparação; projetos recentes não são pesquisados.")
+        self.search.setClearButtonEnabled(True)
+        self.search.addAction(criar_icone_hub("search", "#858589", 18), QLineEdit.ActionPosition.LeadingPosition)
+        self.search.textChanged.connect(self._apply_filter)
+        layout.addWidget(self.search)
+
         self.active_section, self._active_grid = self._build_tool_section(
-            "Ferramentas ativas",
-            "Disponíveis nesta instalação",
+            "Ferramentas disponíveis",
+            "Módulos que podem ser abertos nesta instalação",
         )
         layout.addWidget(self.active_section)
 
-        self.upcoming_section, self._upcoming_grid = self._build_tool_section(
-            "Em preparação",
-            "Novos módulos serão adicionados ao Hub gradualmente",
-        )
+        self.upcoming_section = self._build_upcoming_section()
         layout.addWidget(self.upcoming_section)
-
-        self.recent_section = self._build_recent_section()
-        layout.addWidget(self.recent_section)
         layout.addStretch(1)
 
         self._add_module_cards()
