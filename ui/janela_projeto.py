@@ -828,7 +828,7 @@ class JanelaProjeto(QDialog):
             self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
             QgsProject.instance().addMapLayer(self.camada_base, False)
             self.canvas_preview.setLayers([self.camada_base])
-            core_preview.zoomar_brasil(self)
+            self.canvas_preview.zoomToFullExtent()
         except Exception:
             self.camada_base = None
             self.canvas_preview.setLayers([])
@@ -940,7 +940,7 @@ class JanelaProjeto(QDialog):
                 self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
                 QgsProject.instance().addMapLayer(self.camada_base, False)
                 self.canvas_preview.setLayers([self.camada_base])
-                core_preview.zoomar_brasil(self)
+                self.canvas_preview.zoomToFullExtent()
             except Exception as erro:
                 QMessageBox.warning(self, constants.NOME_PLUGIN, f"Não foi possível alterar o estilo do mapa:\n{erro}")
             return

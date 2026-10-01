@@ -16,8 +16,6 @@ from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QTimer, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLabel
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
     QgsGeometry,
     QgsPointXY,
     QgsProject,
@@ -29,29 +27,6 @@ from qgis.gui import QgsMapToolIdentify, QgsRubberBand
 
 from . import kml, municipios
 from ..utils import constants, helpers
-
-
-def zoomar_brasil(dlg) -> None:
-    """Enquadra o Brasil no CRS atual do canvas sem ampliar para o mundo."""
-    canvas = dlg.canvas_preview
-    extensao_brasil = QgsRectangle(-74.0, -34.0, -34.0, 5.5)
-
-    try:
-        destino = canvas.destinationCrs()
-    except AttributeError:
-        destino = canvas.mapSettings().destinationCrs()
-
-    origem = QgsCoordinateReferenceSystem("EPSG:4326")
-    if destino.isValid() and destino != origem:
-        transformador = QgsCoordinateTransform(
-            origem,
-            destino,
-            QgsProject.instance(),
-        )
-        extensao_brasil = transformador.transformBoundingBox(extensao_brasil)
-
-    canvas.setExtent(extensao_brasil)
-    canvas.refresh()
 
 
 def montar_texto_preview(dados: dict) -> str:
