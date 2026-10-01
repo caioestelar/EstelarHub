@@ -139,7 +139,7 @@ class LuzAmbienteNeon(QWidget):
         self._timer.start()
 
     def _avancar(self):
-        self._fase = (self._fase + 0.004) % 1.0
+        self._fase = (self._fase + 0.004) % 10.0
         self.update()
 
     def paintEvent(self, _event):
