@@ -456,8 +456,10 @@ class EstelarHubDialog(QDialog):
         favorites_layout.setContentsMargins(0, 0, 0, 0)
         favorites_layout.setSpacing(9)
         favorites_layout.addWidget(self._section_heading("Favoritos", "Ferramentas fixadas para acesso rápido"))
-        self._favorites_content = QHBoxLayout()
-        self._favorites_content.setSpacing(8)
+        self._favorites_content = QGridLayout()
+        self._favorites_content.setContentsMargins(0, 0, 0, 0)
+        self._favorites_content.setHorizontalSpacing(8)
+        self._favorites_content.setVerticalSpacing(7)
         favorites_layout.addLayout(self._favorites_content)
         self._favorites_empty = QLabel("Use a estrela de uma ferramenta para fixá-la aqui.")
         self._favorites_empty.setObjectName("hubEmptyHint")
@@ -509,15 +511,33 @@ class EstelarHubDialog(QDialog):
         row.addStretch()
         return section
 
-    def _build_quick_actions(self, parent_layout):
-        row = QHBoxLayout()
-        row.setSpacing(9)
-        launch = QPushButton("Abrir Mapa de Acesso")
-        launch.setObjectName("hubPrimaryAction")
-        launch.setIcon(criar_icone_hub("road", "#ffffff", 17))
-        launch.setIconSize(QSize(17, 17))
-        launch.clicked.connect(lambda: self._launch_module("access-map"))
-        row.addWidget(launch)
+    def _build_current_project_section(self):
+        section = QWidget()
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(7)
+        layout.addWidget(self._section_heading("Projeto atual"))
+
+        row = QFrame()
+        row.setObjectName("hubCurrentProject")
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(12, 10, 12, 10)
+        row_layout.setSpacing(12)
+
+        details = QVBoxLayout()
+        details.setSpacing(3)
+        project_name = os.path.basename(self._current_project_path) if self._current_project_path else "Projeto não salvo"
+        self.home_project_name_label = QLabel(project_name)
+        self.home_project_name_label.setObjectName("hubHomeProjectName")
+        self.home_project_name_label.setWordWrap(True)
+        details.addWidget(self.home_project_name_label)
+        project_path = self._current_project_path or "Salve o projeto no QGIS para registrá-lo nos recentes."
+        self.home_project_path_label = QLabel(project_path)
+        self.home_project_path_label.setObjectName("hubHomeProjectPath")
+        self.home_project_path_label.setWordWrap(True)
+        self.home_project_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details.addWidget(self.home_project_path_label)
+        row_layout.addLayout(details, 1)
 
         open_folder = QPushButton("Pasta do projeto")
         open_folder.setObjectName("hubSecondaryAction")
@@ -526,10 +546,10 @@ class EstelarHubDialog(QDialog):
         open_folder.setEnabled(bool(self._current_project_path and os.path.isfile(self._current_project_path)))
         open_folder.setToolTip("Abrir a pasta do projeto atual no Explorador de Arquivos")
         open_folder.clicked.connect(self._open_current_project_folder)
-        row.addWidget(open_folder)
+        row_layout.addWidget(open_folder, 0, Qt.AlignmentFlag.AlignVCenter)
         self.open_folder_button = open_folder
-        row.addStretch(1)
-        parent_layout.addLayout(row)
+        layout.addWidget(row)
+        return section
 
     def _build_tool_section(self, title_text, subtitle_text):
         section = QWidget()
@@ -550,55 +570,51 @@ class EstelarHubDialog(QDialog):
         section = QWidget()
         layout = QVBoxLayout(section)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(9)
-        layout.addWidget(self._section_heading("Projetos recentes", "Projetos abertos nesta sessão do Hub"))
+        layout.setSpacing(8)
+        layout.addWidget(self._section_heading("Projetos recentes", "Abra um projeto ou mostre sua pasta"))
         self._recent_content = QVBoxLayout()
-        self._recent_content.setSpacing(7)
+        self._recent_content.setSpacing(2)
         layout.addLayout(self._recent_content)
+        return section
+
+    def _build_upcoming_section(self):
+        section = QWidget()
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(9)
+        layout.addWidget(self._section_heading("Em preparação", "Módulos registrados que ainda não podem ser abertos"))
+        self._upcoming_content = QVBoxLayout()
+        self._upcoming_content.setContentsMargins(0, 0, 0, 0)
+        self._upcoming_content.setSpacing(12)
+        layout.addLayout(self._upcoming_content)
         return section
 
     def _build_status_panel(self):
         panel = QFrame()
         panel.setObjectName("hubStatusPanel")
-        panel.setFixedWidth(270)
+        panel.setFixedWidth(238)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(16, 20, 16, 16)
+        layout.setContentsMargins(14, 20, 14, 16)
         layout.setSpacing(12)
 
         heading = QLabel("Workspace")
         heading.setObjectName("hubSideHeading")
         layout.addWidget(heading)
 
-        project_box = QFrame()
-        project_box.setObjectName("hubContextBlock")
-        project_layout = QVBoxLayout(project_box)
-        project_layout.setContentsMargins(12, 12, 12, 12)
-        project_layout.setSpacing(7)
         project_state = QLabel("PROJETO ATUAL")
         project_state.setObjectName("hubEyebrow")
-        project_layout.addWidget(project_state)
+        layout.addWidget(project_state)
         project_name = os.path.basename(self._current_project_path) if self._current_project_path else "Projeto não salvo"
         self.project_name_label = QLabel(project_name)
         self.project_name_label.setObjectName("hubContextTitle")
         self.project_name_label.setWordWrap(True)
-        project_layout.addWidget(self.project_name_label)
+        layout.addWidget(self.project_name_label)
         project_detail = self._current_project_path or "Salve o projeto no QGIS para registrá-lo nos recentes."
         self.project_detail_label = QLabel(project_detail)
         self.project_detail_label.setObjectName("hubContextDetail")
         self.project_detail_label.setWordWrap(True)
-        project_layout.addWidget(self.project_detail_label)
-        layout.addWidget(project_box)
-
-        layout.addWidget(self._divider())
-        counts_heading = QLabel("FERRAMENTAS")
-        counts_heading.setObjectName("hubEyebrow")
-        layout.addWidget(counts_heading)
-        active_count = sum(1 for module in self.registry.modules() if module.is_active)
-        upcoming_count = len(self.registry.modules()) - active_count
-        counts = QHBoxLayout()
-        counts.addWidget(self._stat_block(str(active_count), "Ativa"))
-        counts.addWidget(self._stat_block(str(upcoming_count), "Em preparação"))
-        layout.addLayout(counts)
+        self.project_detail_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        layout.addWidget(self.project_detail_label)
 
         layout.addWidget(self._divider())
         qgis_status = QLabel("SESSÃO QGIS")
@@ -654,21 +670,6 @@ class EstelarHubDialog(QDialog):
         line.setFrameShape(QFrame.Shape.HLine)
         return line
 
-    @staticmethod
-    def _stat_block(value, label):
-        block = QFrame()
-        block.setObjectName("hubStatBlock")
-        layout = QVBoxLayout(block)
-        layout.setContentsMargins(10, 9, 10, 9)
-        layout.setSpacing(3)
-        value_label = QLabel(value)
-        value_label.setObjectName("hubStatValue")
-        layout.addWidget(value_label)
-        caption = QLabel(label)
-        caption.setObjectName("hubStatCaption")
-        layout.addWidget(caption)
-        return block
-
     def _load_recent_projects(self):
         return self.project_manager.recent_projects()
 
@@ -701,7 +702,7 @@ class EstelarHubDialog(QDialog):
                 item.widget().deleteLater()
 
         if not self._recent_projects:
-            empty = QLabel("Nenhum projeto recente salvo. Abra ou salve um projeto no QGIS para vê-lo aqui.")
+            empty = QLabel("Nenhum projeto recente. Abra ou salve um projeto no QGIS para vê-lo aqui.")
             empty.setObjectName("hubEmptyHint")
             empty.setWordWrap(True)
             self._recent_content.addWidget(empty)
@@ -710,63 +711,116 @@ class EstelarHubDialog(QDialog):
         for path in self._recent_projects:
             row = QFrame()
             row.setObjectName("hubRecentRow")
+            row.setToolTip(path)
             row_layout = QHBoxLayout(row)
-            row_layout.setContentsMargins(10, 8, 10, 8)
+            row_layout.setContentsMargins(8, 6, 8, 6)
             row_layout.setSpacing(9)
             icon = QLabel()
             icon.setPixmap(criar_icone_hub("document", "#858589", 18).pixmap(QSize(18, 18)))
+            icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
             row_layout.addWidget(icon)
             text = QVBoxLayout()
             text.setSpacing(2)
             name = QLabel(os.path.basename(path))
             name.setObjectName("hubRecentName")
+            name.setToolTip(path)
+            name.setWordWrap(True)
             detail = QLabel(os.path.dirname(path))
             detail.setObjectName("hubRecentPath")
+            detail.setToolTip(os.path.dirname(path))
+            detail.setWordWrap(True)
             detail.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             text.addWidget(name)
             text.addWidget(detail)
             row_layout.addLayout(text, 1)
-            open_folder = QToolButton()
-            open_folder.setObjectName("hubSmallAction")
-            open_folder.setIcon(criar_icone_hub("document", "#858589", 16))
-            open_folder.setIconSize(QSize(16, 16))
-            open_folder.setToolTip("Abrir este projeto no Estelar Hub")
-            open_folder.clicked.connect(lambda _checked=False, project_path=path: self._open_recent_project(project_path))
-            row_layout.addWidget(open_folder)
+
+            open_project = QToolButton()
+            open_project.setObjectName("hubSmallAction")
+            open_project.setIcon(criar_icone_hub("document", "#858589", 16))
+            open_project.setIconSize(QSize(16, 16))
+            open_project.setToolTip("Abrir projeto")
+            open_project.setAccessibleName(f"Abrir projeto {os.path.basename(path)}")
+            open_project.clicked.connect(lambda _checked=False, project_path=path: self._open_recent_project(project_path))
+            row_layout.addWidget(open_project)
 
             show_folder = QToolButton()
             show_folder.setObjectName("hubSmallAction")
             show_folder.setIcon(criar_icone_hub("folder", "#858589", 16))
             show_folder.setIconSize(QSize(16, 16))
-            show_folder.setToolTip("Mostrar a pasta do projeto")
+            show_folder.setToolTip("Mostrar pasta")
+            show_folder.setAccessibleName(f"Mostrar pasta de {os.path.basename(path)}")
             show_folder.clicked.connect(lambda _checked=False, folder=os.path.dirname(path): self._open_folder(folder))
             row_layout.addWidget(show_folder)
             self._recent_content.addWidget(row)
 
     def _add_module_cards(self):
-        active_modules = [module for module in self.registry.modules() if module.is_active]
-        upcoming_modules = [module for module in self.registry.modules() if not module.is_active]
+        modules = self.registry.modules()
+        available_modules = [module for module in modules if self.registry.can_launch(module.id)]
+        upcoming_modules = [module for module in modules if module not in available_modules]
+        self._upcoming_rows = {}
+        self._upcoming_groups = []
 
-        for index, module in enumerate(active_modules):
+        for index, module in enumerate(available_modules):
             card = HubToolCard(
                 module,
                 module.id in self._favorite_ids,
                 self._launch_module,
                 self._toggle_favorite,
+                can_launch=self.registry.can_launch(module.id),
             )
             self._cards[module.id] = card
             self._active_grid.addWidget(card, index, 0, 1, 2)
 
-        for index, module in enumerate(upcoming_modules):
-            card = HubToolCard(
-                module,
-                module.id in self._favorite_ids,
-                self._launch_module,
-                self._toggle_favorite,
-            )
-            self._cards[module.id] = card
-            row, column = divmod(index, 2)
-            self._upcoming_grid.addWidget(card, row, column)
+        self._upcoming_favorite_buttons = {}
+        grouped_modules = {}
+        for module in upcoming_modules:
+            grouped_modules.setdefault(module.category or "Outros", []).append(module)
+
+        for category, category_modules in grouped_modules.items():
+            group = QWidget()
+            group_layout = QVBoxLayout(group)
+            group_layout.setContentsMargins(0, 0, 0, 0)
+            group_layout.setSpacing(3)
+            category_label = QLabel(category)
+            category_label.setObjectName("hubUpcomingCategory")
+            group_layout.addWidget(category_label)
+            module_ids = []
+
+            for module in category_modules:
+                row = QFrame()
+                row.setObjectName("hubUpcomingRow")
+                row_layout = QHBoxLayout(row)
+                row_layout.setContentsMargins(7, 5, 7, 5)
+                row_layout.setSpacing(9)
+                icon = QLabel()
+                icon.setPixmap(criar_icone_hub(module.icon, "#858589", 17).pixmap(QSize(17, 17)))
+                icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                row_layout.addWidget(icon)
+                name = QLabel(module.name)
+                name.setObjectName("hubUpcomingName")
+                name.setToolTip(module.description)
+                row_layout.addWidget(name, 1)
+                state_text = "Em preparação" if not module.is_active else "Indisponível"
+                state = QLabel(state_text)
+                state.setObjectName("hubUpcomingState")
+                row_layout.addWidget(state)
+                favorite_button = QToolButton()
+                favorite_button.setObjectName("hubFavoriteButton")
+                favorite_button.setCheckable(True)
+                favorite_button.setChecked(module.id in self._favorite_ids)
+                favorite_button.setIcon(criar_icone_hub("star", "#3b82f6" if module.id in self._favorite_ids else "#77777b", 17))
+                favorite_button.setIconSize(QSize(17, 17))
+                favorite_button.setToolTip("Remover dos favoritos" if module.id in self._favorite_ids else "Adicionar aos favoritos")
+                favorite_button.setAccessibleName(favorite_button.toolTip())
+                favorite_button.clicked.connect(lambda _checked=False, module_id=module.id: self._toggle_favorite(module_id))
+                row_layout.addWidget(favorite_button)
+                group_layout.addWidget(row)
+                self._upcoming_rows[module.id] = row
+                self._upcoming_favorite_buttons[module.id] = favorite_button
+                module_ids.append(module.id)
+
+            self._upcoming_content.addWidget(group)
+            self._upcoming_groups.append((group, module_ids))
 
         self._apply_filter()
 
@@ -778,15 +832,19 @@ class EstelarHubDialog(QDialog):
 
         favorites = [module for module in self.registry.modules() if module.id in self._favorite_ids]
         self._favorites_empty.setVisible(not favorites)
-        for module in favorites:
-            shortcut = QPushButton(module.name)
+        for index, module in enumerate(favorites):
+            can_launch = self.registry.can_launch(module.id)
+            label = module.name if can_launch else f"{module.name} · Em preparação"
+            shortcut = QPushButton(label)
             shortcut.setObjectName("hubFavoriteShortcut")
-            shortcut.setIcon(criar_icone_hub(module.icon, "#3b82f6" if module.is_active else "#77777b", 17))
+            shortcut.setIcon(criar_icone_hub(module.icon, "#3b82f6" if can_launch else "#77777b", 17))
             shortcut.setIconSize(QSize(17, 17))
-            shortcut.setEnabled(module.is_active and self.registry.can_launch(module.id))
+            shortcut.setEnabled(can_launch)
+            shortcut.setToolTip(f"Abrir {module.name}" if can_launch else f"{module.name}: em preparação")
             shortcut.clicked.connect(lambda _checked=False, module_id=module.id: self._launch_module(module_id))
-            self._favorites_content.addWidget(shortcut)
-        self._favorites_content.addStretch(1)
+            self._favorites_content.addWidget(shortcut, index // 2, index % 2)
+        self._favorites_content.setColumnStretch(0, 1)
+        self._favorites_content.setColumnStretch(1, 1)
 
     def _toggle_favorite(self, module_id):
         if module_id in self._favorite_ids:
@@ -795,12 +853,13 @@ class EstelarHubDialog(QDialog):
             self._favorite_ids.add(module_id)
         self.settings.setValue("EstelarHub/favorites", sorted(self._favorite_ids))
         card = self._cards.get(module_id)
-        if card is not None:
+        favorite_button = card.favorite_button if card is not None else self._upcoming_favorite_buttons.get(module_id)
+        if favorite_button is not None:
             is_favorite = module_id in self._favorite_ids
-            card.favorite_button.setChecked(is_favorite)
-            card.favorite_button.setIcon(criar_icone_hub("star", "#3b82f6" if is_favorite else "#77777b", 17))
-            card.favorite_button.setToolTip("Remover dos favoritos" if is_favorite else "Adicionar aos favoritos")
-            card.favorite_button.setAccessibleName(card.favorite_button.toolTip())
+            favorite_button.setChecked(is_favorite)
+            favorite_button.setIcon(criar_icone_hub("star", "#3b82f6" if is_favorite else "#77777b", 17))
+            favorite_button.setToolTip("Remover dos favoritos" if is_favorite else "Adicionar aos favoritos")
+            favorite_button.setAccessibleName(favorite_button.toolTip())
         self._render_favorites()
         if self._filter == "favorites":
             self._apply_filter()
@@ -810,18 +869,25 @@ class EstelarHubDialog(QDialog):
         visible_active = 0
         visible_upcoming = 0
         for module in self.registry.modules():
-            card = self._cards[module.id]
             searchable = f"{module.name} {module.description} {module.category}".casefold()
             matches_search = not query or query in searchable
             matches_filter = self._filter != "favorites" or module.id in self._favorite_ids
             visible = matches_search and matches_filter
-            card.setVisible(visible)
-            if visible:
-                if module.is_active:
+            if self.registry.can_launch(module.id):
+                card = self._cards.get(module.id)
+                if card is not None:
+                    card.setVisible(visible)
+                if visible:
                     visible_active += 1
-                else:
+            else:
+                row = self._upcoming_rows.get(module.id)
+                if row is not None:
+                    row.setVisible(visible)
+                if visible:
                     visible_upcoming += 1
 
+        for group, module_ids in self._upcoming_groups:
+            group.setVisible(any(not self._upcoming_rows[module_id].isHidden() for module_id in module_ids))
         self.active_section.setVisible(visible_active > 0)
         self.upcoming_section.setVisible(visible_upcoming > 0)
 
@@ -834,7 +900,8 @@ class EstelarHubDialog(QDialog):
         if key == "home":
             self.main_scroll.verticalScrollBar().setValue(0)
         elif key == "tools":
-            self.main_scroll.ensureWidgetVisible(self.active_section, 0, 20)
+            target = self.active_section if self.active_section.isVisible() else self.upcoming_section
+            self.main_scroll.ensureWidgetVisible(target, 0, 20)
         elif key == "favorites":
             self.main_scroll.ensureWidgetVisible(self.favorites_section, 0, 20)
         elif key == "recent":
@@ -846,7 +913,8 @@ class EstelarHubDialog(QDialog):
             button.setChecked(nav_key == "tools")
         self.search.setText(category)
         self._apply_filter()
-        self.main_scroll.ensureWidgetVisible(self.active_section, 0, 20)
+        target = self.active_section if self.active_section.isVisible() else self.upcoming_section
+        self.main_scroll.ensureWidgetVisible(target, 0, 20)
 
     def _launch_module(self, module_id):
         if not self.registry.can_launch(module_id):
@@ -882,9 +950,10 @@ class EstelarHubDialog(QDialog):
         self.header_project_label.setText(project_name)
         self.header_project_label.setToolTip(self._current_project_path or "O projeto atual do QGIS ainda não foi salvo")
         self.project_name_label.setText(project_name)
-        self.project_detail_label.setText(
-            self._current_project_path or "Salve o projeto no QGIS para registrá-lo nos recentes."
-        )
+        project_detail = self._current_project_path or "Salve o projeto no QGIS para registrá-lo nos recentes."
+        self.project_detail_label.setText(project_detail)
+        self.home_project_name_label.setText(project_name)
+        self.home_project_path_label.setText(project_detail)
         self.open_folder_button.setEnabled(
             bool(self._current_project_path and os.path.isfile(self._current_project_path))
         )

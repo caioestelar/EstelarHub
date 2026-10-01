@@ -314,6 +314,23 @@ QWidget#hubMainContent {
     font-weight: 650;
 }
 
+QFrame#hubCurrentProject {
+    background-color: #171719;
+    border: 1px solid #2c2c30;
+    border-radius: 8px;
+}
+
+#hubHomeProjectName {
+    color: #eeeeef;
+    font-size: 11pt;
+    font-weight: 650;
+}
+
+#hubHomeProjectPath {
+    color: #99999e;
+    font-size: 8.5pt;
+}
+
 #hubWelcomeDescription,
 #hubSectionSubtitle {
     color: #929297;
@@ -351,12 +368,8 @@ QFrame#hubToolCard:hover {
     border-color: #45454b;
 }
 
-QFrame#hubToolCard[moduleStatus="active"] {
-    border-left: 3px solid #3b82f6;
-}
-
-QFrame#hubToolCard[moduleStatus="upcoming"] {
-    border-left: 3px solid #4a4a50;
+QFrame#hubToolCard:focus {
+    border-color: #3b82f6;
 }
 
 QFrame#hubToolIconTile {
@@ -472,25 +485,54 @@ QPushButton#hubUpcomingButton:disabled {
     font-size: 8pt;
 }
 
-QFrame#hubRecentRow,
-QFrame#hubContextBlock,
-QFrame#hubStatBlock {
+QFrame#hubRecentRow {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #28282b;
+    border-radius: 0;
+}
+
+QFrame#hubRecentRow:hover {
     background-color: #19191b;
-    border: 1px solid #2c2c30;
-    border-radius: 8px;
 }
 
 #hubRecentName,
 #hubContextTitle {
     color: #e6e6e8;
-    font-size: 8pt;
+    font-size: 9pt;
     font-weight: 600;
 }
 
 #hubRecentPath,
 #hubContextDetail {
-    color: #8b8b90;
-    font-size: 7pt;
+    color: #99999e;
+    font-size: 8pt;
+}
+
+#hubUpcomingCategory {
+    color: #a9a9ae;
+    font-size: 9pt;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+QFrame#hubUpcomingRow {
+    background-color: transparent;
+    border-bottom: 1px solid #242427;
+}
+
+QFrame#hubUpcomingRow:hover {
+    background-color: #19191b;
+}
+
+#hubUpcomingName {
+    color: #c6c6ca;
+    font-size: 9pt;
+}
+
+#hubUpcomingState {
+    color: #858589;
+    font-size: 8pt;
 }
 
 QFrame#hubStatusPanel {
