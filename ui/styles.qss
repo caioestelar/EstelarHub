@@ -408,12 +408,6 @@ QFrame#hubToolIconTile[moduleStatus="active"] {
     font-weight: 700;
 }
 
-#hubStatusBadge[moduleStatus="upcoming"] {
-    color: #96969b;
-    background-color: #222225;
-    border-color: #343438;
-}
-
 QToolButton#hubFavoriteButton,
 QToolButton#hubSmallAction {
     min-width: 28px;
@@ -426,13 +420,29 @@ QToolButton#hubSmallAction {
     border-radius: 6px;
 }
 
+QToolButton#hubRecentAction {
+    min-height: 28px;
+    padding: 3px 6px;
+    color: #b9b9bd;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 8pt;
+    font-weight: 500;
+}
+
+QToolButton#hubRecentAction:hover {
+    color: #e9f1ff;
+    background-color: #202023;
+    border-color: #343438;
+}
+
 QToolButton#hubFavoriteButton:hover,
 QToolButton#hubSmallAction:hover {
     background-color: #29292d;
     border-color: #3a3a40;
 }
 
-QPushButton#hubPrimaryAction,
 QPushButton#hubSecondaryAction,
 QPushButton#hubLaunchButton,
 QPushButton#hubUpcomingButton,
@@ -444,14 +454,12 @@ QPushButton#hubFavoriteShortcut {
     font-weight: 600;
 }
 
-QPushButton#hubPrimaryAction,
 QPushButton#hubLaunchButton {
     color: #ffffff;
     background-color: #346fce;
     border: 1px solid #477fd4;
 }
 
-QPushButton#hubPrimaryAction:hover,
 QPushButton#hubLaunchButton:hover {
     background-color: #3b82f6;
     border-color: #5a94f7;
@@ -552,13 +560,6 @@ QFrame#hubStatusPanel {
     font-weight: 700;
 }
 
-#hubStatValue {
-    color: #eeeeef;
-    font-size: 16pt;
-    font-weight: 650;
-}
-
-#hubStatCaption,
 #hubVersionLabel {
     color: #8c8c91;
     font-size: 7pt;

@@ -170,7 +170,7 @@ class HubToolCard(QFrame):
         self.module = module
         self.can_launch = bool(module.is_active and can_launch)
         self.setObjectName("hubToolCard")
-        self.setProperty("moduleStatus", module.status)
+        self.setProperty("moduleStatus", "active" if self.can_launch else "upcoming")
         self.setCursor(Qt.CursorShape.PointingHandCursor if self.can_launch else Qt.CursorShape.ArrowCursor)
 
         layout = QVBoxLayout(self)
@@ -735,19 +735,21 @@ class EstelarHubDialog(QDialog):
             row_layout.addLayout(text, 1)
 
             open_project = QToolButton()
-            open_project.setObjectName("hubSmallAction")
-            open_project.setIcon(criar_icone_hub("document", "#858589", 16))
-            open_project.setIconSize(QSize(16, 16))
-            open_project.setToolTip("Abrir projeto")
+            open_project.setObjectName("hubRecentAction")
+            open_project.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            open_project.setText("Abrir projeto")
+            open_project.setIcon(criar_icone_hub("document", "#a6a6aa", 15))
+            open_project.setIconSize(QSize(15, 15))
             open_project.setAccessibleName(f"Abrir projeto {os.path.basename(path)}")
             open_project.clicked.connect(lambda _checked=False, project_path=path: self._open_recent_project(project_path))
             row_layout.addWidget(open_project)
 
             show_folder = QToolButton()
-            show_folder.setObjectName("hubSmallAction")
-            show_folder.setIcon(criar_icone_hub("folder", "#858589", 16))
-            show_folder.setIconSize(QSize(16, 16))
-            show_folder.setToolTip("Mostrar pasta")
+            show_folder.setObjectName("hubRecentAction")
+            show_folder.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            show_folder.setText("Mostrar pasta")
+            show_folder.setIcon(criar_icone_hub("folder", "#a6a6aa", 15))
+            show_folder.setIconSize(QSize(15, 15))
             show_folder.setAccessibleName(f"Mostrar pasta de {os.path.basename(path)}")
             show_folder.clicked.connect(lambda _checked=False, folder=os.path.dirname(path): self._open_folder(folder))
             row_layout.addWidget(show_folder)
@@ -834,17 +836,17 @@ class EstelarHubDialog(QDialog):
         self._favorites_empty.setVisible(not favorites)
         for index, module in enumerate(favorites):
             can_launch = self.registry.can_launch(module.id)
-            label = module.name if can_launch else f"{module.name} · Em preparação"
+            unavailable_state = "Em preparação" if not module.is_active else "Indisponível"
+            label = module.name if can_launch else f"{module.name} · {unavailable_state}"
             shortcut = QPushButton(label)
             shortcut.setObjectName("hubFavoriteShortcut")
             shortcut.setIcon(criar_icone_hub(module.icon, "#3b82f6" if can_launch else "#77777b", 17))
             shortcut.setIconSize(QSize(17, 17))
             shortcut.setEnabled(can_launch)
-            shortcut.setToolTip(f"Abrir {module.name}" if can_launch else f"{module.name}: em preparação")
+            shortcut.setToolTip(f"Abrir {module.name}" if can_launch else f"{module.name}: {unavailable_state.casefold()}")
             shortcut.clicked.connect(lambda _checked=False, module_id=module.id: self._launch_module(module_id))
-            self._favorites_content.addWidget(shortcut, index // 2, index % 2)
+            self._favorites_content.addWidget(shortcut, index, 0)
         self._favorites_content.setColumnStretch(0, 1)
-        self._favorites_content.setColumnStretch(1, 1)
 
     def _toggle_favorite(self, module_id):
         if module_id in self._favorite_ids:
