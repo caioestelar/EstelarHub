@@ -58,7 +58,6 @@ from ..core import projeto as core_projeto
 from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
 import os
-from qgis.PyQt.QtGui import QPalette
 
 
 def criar_icone_estelar(nome: str, cor: str = "#3b82f6") -> QIcon:
@@ -344,14 +343,14 @@ class JanelaProjeto(QDialog):
         )
         tela = QApplication.primaryScreen()
         if tela is None:
-            self.resize(1380, 760)
+            self.resize(1380, 840)
         else:
             area = tela.availableGeometry()
             self.resize(
                 min(1380, max(900, area.width() - 40)),
-                min(760, max(560, area.height() - 80)),
+                min(900, max(680, area.height() - 40)),
             )
-        self.setMinimumSize(900, 560)
+        self.setMinimumSize(900, 640)
         self.setMaximumSize(1760, 1024)
 
         layout_principal = QVBoxLayout()
@@ -818,7 +817,9 @@ class JanelaProjeto(QDialog):
         self.canvas_preview.setObjectName("mapCanvas")
         self.canvas_preview.setMinimumHeight(360)
         self.canvas_preview.enableAntiAliasing(True)
-        self.canvas_preview.setBackgroundRole(QPalette.ColorRole.Window)
+        self.canvas_preview.setCanvasColor(QColor(10, 48, 62))
+        self.canvas_preview.setCachingEnabled(True)
+        self.canvas_preview.setPreviewJobsEnabled(True)
         self.canvas_preview.viewport().setMouseTracking(True)
 
         self._preview_tool = core_preview.PreviewMoveTool(self.canvas_preview, self)
@@ -827,8 +828,9 @@ class JanelaProjeto(QDialog):
         try:
             self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
             QgsProject.instance().addMapLayer(self.camada_base, False)
+            self.canvas_preview.setDestinationCrs(self.camada_base.crs())
             self.canvas_preview.setLayers([self.camada_base])
-            self.canvas_preview.zoomToFullExtent()
+            core_preview.animar_zoom_brasil(self)
         except Exception:
             self.camada_base = None
             self.canvas_preview.setLayers([])
@@ -885,35 +887,69 @@ class JanelaProjeto(QDialog):
         mapa_layout.addWidget(estilo_box, 0, 0)
         mapa_layout.setAlignment(estilo_box, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
-        escala_layout = QVBoxLayout()
-        escala_layout.setContentsMargins(14, 12, 14, 12)
-        escala_layout.setSpacing(8)
-
-        self.spin_001 = self._criar_slider_escala(escala_layout, "001", "LAYOUT 1 (ROSA)", "lbl_001")
-        self.spin_002 = self._criar_slider_escala(escala_layout, "002", "LAYOUT 2 (LARANJA)", "lbl_002")
-        self.spin_003 = self._criar_slider_escala(escala_layout, "003", "LAYOUT 3 (VERDE)", "lbl_003")
-
-        self.spin_001.valueChanged.connect(self._desenhar_retangulos)
-        self.spin_002.valueChanged.connect(self._desenhar_retangulos)
-        self.spin_003.valueChanged.connect(self._desenhar_retangulos)
-
-        panel_escala = QWidget(mapa_container)
-        panel_escala.setObjectName("scalePanel")
-        panel_escala.setLayout(escala_layout)
-        panel_escala.setMinimumSize(320, 220)
-        panel_escala.setMaximumWidth(360)
-        panel_escala.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        panel_escala.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        mapa_layout.addWidget(panel_escala, 0, 0)
-        mapa_layout.setAlignment(panel_escala, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
-        panel_escala.raise_()
-
         mapa_layout.addWidget(preview_overlay, 0, 0)
         preview_overlay.lower()
-        grupo_layout.addWidget(mapa_container)
+        grupo_layout.addWidget(mapa_container, 1)
 
         grupo_preview.setLayout(grupo_layout)
-        layout.addWidget(grupo_preview)
+        layout.addWidget(grupo_preview, 1)
+
+        panel_escala = QFrame()
+        panel_escala.setObjectName("scalePanel")
+        panel_escala.setMinimumHeight(142)
+        layout_escala = QVBoxLayout(panel_escala)
+        layout_escala.setContentsMargins(10, 7, 10, 8)
+        layout_escala.setSpacing(5)
+
+        cabecalho_escala = QHBoxLayout()
+        cabecalho_escala.setContentsMargins(2, 0, 2, 0)
+        titulo_escala = QLabel("EXTENSÕES DOS LAYOUTS")
+        titulo_escala.setObjectName("scaleBenchTitle")
+        cabecalho_escala.addWidget(titulo_escala)
+        cabecalho_escala.addStretch()
+        dica_escala = QLabel("Ajuste cada área diretamente pelo controle")
+        dica_escala.setObjectName("scaleBenchHint")
+        cabecalho_escala.addWidget(dica_escala)
+        layout_escala.addLayout(cabecalho_escala)
+
+        grade_escala = QGridLayout()
+        grade_escala.setContentsMargins(0, 0, 0, 0)
+        grade_escala.setHorizontalSpacing(8)
+        grade_escala.setVerticalSpacing(0)
+        grade_escala.setColumnStretch(0, 1)
+        grade_escala.setColumnStretch(1, 1)
+        grade_escala.setColumnStretch(2, 1)
+
+        configuracoes_escala = (
+            ("001", "LAYOUT 1", "lbl_001"),
+            ("002", "LAYOUT 2", "lbl_002"),
+            ("003", "LAYOUT 3", "lbl_003"),
+        )
+        for coluna, (chave, titulo, nome_label) in enumerate(configuracoes_escala):
+            cartao_escala = QFrame()
+            cartao_escala.setObjectName("layoutCard")
+            cartao_escala.setProperty("layoutKey", chave)
+            cartao_layout = QVBoxLayout(cartao_escala)
+            cartao_layout.setContentsMargins(8, 5, 8, 4)
+            cartao_layout.setSpacing(0)
+            spin = self._criar_slider_escala(
+                cartao_layout,
+                chave,
+                titulo,
+                nome_label,
+            )
+            spin.valueChanged.connect(self._desenhar_retangulos)
+            grade_escala.addWidget(cartao_escala, 0, coluna)
+
+            if chave == "001":
+                self.spin_001 = spin
+            elif chave == "002":
+                self.spin_002 = spin
+            else:
+                self.spin_003 = spin
+
+        layout_escala.addLayout(grade_escala)
+        layout.addWidget(panel_escala, 0)
 
     def _alternar_lock_layout(self, chave: str) -> None:
         if chave not in self._layout_locked:
@@ -939,8 +975,9 @@ class JanelaProjeto(QDialog):
             try:
                 self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
                 QgsProject.instance().addMapLayer(self.camada_base, False)
+                self.canvas_preview.setDestinationCrs(self.camada_base.crs())
                 self.canvas_preview.setLayers([self.camada_base])
-                self.canvas_preview.zoomToFullExtent()
+                core_preview.animar_zoom_brasil(self)
             except Exception as erro:
                 QMessageBox.warning(self, constants.NOME_PLUGIN, f"Não foi possível alterar o estilo do mapa:\n{erro}")
             return
@@ -1001,6 +1038,8 @@ class JanelaProjeto(QDialog):
         spin.hide()
 
         slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setObjectName("layoutScaleSlider")
+        slider.setProperty("layoutKey", chave)
         escala_minima = 5000
         escala_maxima = 2000000
         passo_escala = 5000
@@ -1037,6 +1076,7 @@ class JanelaProjeto(QDialog):
         label_escala = QLabel(helpers.formatar_escala(slider.value() * passo_escala))
         setattr(self, nome_label, label_escala)
         label_escala.setObjectName("scaleValue")
+        label_escala.setProperty("layoutKey", chave)
         label_escala.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label_escala.setMinimumWidth(100)
 
@@ -1045,6 +1085,7 @@ class JanelaProjeto(QDialog):
         cabecalho.setSpacing(6)
         titulo_label = QLabel(titulo)
         titulo_label.setObjectName("scaleTitle")
+        titulo_label.setProperty("layoutKey", chave)
         cabecalho.addWidget(titulo_label)
         cabecalho.addStretch()
 

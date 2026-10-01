@@ -12,10 +12,12 @@ de estado usado na macro original, só que agora isolado da construção de
 widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 """
 
-from qgis.PyQt.QtCore import QEvent, QObject, QPoint, QTimer, Qt
+from qgis.PyQt.QtCore import QElapsedTimer, QEvent, QObject, QPoint, QTimer, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLabel
 from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
     QgsGeometry,
     QgsPointXY,
     QgsProject,
@@ -27,6 +29,94 @@ from qgis.gui import QgsMapToolIdentify, QgsRubberBand
 
 from . import kml, municipios
 from ..utils import constants, helpers
+
+
+def animar_zoom_brasil(dlg, duracao_ms: int = 1500) -> None:
+    """Anima o enquadramento mundial até mostrar o Brasil inteiro."""
+    canvas = dlg.canvas_preview
+
+    timer_anterior = getattr(dlg, "_timer_zoom_brasil", None)
+    if timer_anterior is not None:
+        timer_anterior.stop()
+        timer_anterior.deleteLater()
+
+    def iniciar_animacao() -> None:
+        if canvas.width() <= 1 or canvas.height() <= 1:
+            QTimer.singleShot(80, iniciar_animacao)
+            return
+
+        canvas.zoomToFullExtent()
+        extensao_inicial = QgsRectangle(canvas.extent())
+        crs_destino = canvas.mapSettings().destinationCrs()
+        crs_origem = QgsCoordinateReferenceSystem("EPSG:4326")
+        extensao_alvo = QgsRectangle(-74.0, -34.0, -34.0, 5.5)
+
+        if crs_destino.isValid() and crs_destino != crs_origem:
+            transformador = QgsCoordinateTransform(
+                crs_origem,
+                crs_destino,
+                QgsProject.instance(),
+            )
+            extensao_alvo = transformador.transformBoundingBox(extensao_alvo)
+
+        centro = extensao_alvo.center()
+        largura_alvo = extensao_alvo.width()
+        altura_alvo = extensao_alvo.height()
+        proporcao_canvas = canvas.width() / max(canvas.height(), 1)
+        if largura_alvo / max(altura_alvo, 1e-12) < proporcao_canvas:
+            largura_alvo = altura_alvo * proporcao_canvas
+        else:
+            altura_alvo = largura_alvo / proporcao_canvas
+        margem = 1.10
+        largura_alvo *= margem
+        altura_alvo *= margem
+        extensao_alvo = QgsRectangle(
+            centro.x() - largura_alvo / 2,
+            centro.y() - altura_alvo / 2,
+            centro.x() + largura_alvo / 2,
+            centro.y() + altura_alvo / 2,
+        )
+
+        if extensao_inicial.isEmpty() or extensao_inicial.width() <= 0 or extensao_inicial.height() <= 0:
+            canvas.setExtent(extensao_alvo)
+            canvas.refresh()
+            return
+
+        cronometro = QElapsedTimer()
+        cronometro.start()
+        timer = QTimer(dlg)
+        timer.setInterval(40)
+        dlg._timer_zoom_brasil = timer
+
+        def atualizar_enquadramento() -> None:
+            progresso = min(1.0, cronometro.elapsed() / max(duracao_ms, 1))
+            suave = 4 * progresso ** 3 if progresso < 0.5 else 1 - ((-2 * progresso + 2) ** 3) / 2
+
+            centro_x = extensao_inicial.center().x() + (centro.x() - extensao_inicial.center().x()) * suave
+            centro_y = extensao_inicial.center().y() + (centro.y() - extensao_inicial.center().y()) * suave
+            fator_largura = (extensao_alvo.width() / extensao_inicial.width()) ** suave
+            fator_altura = (extensao_alvo.height() / extensao_inicial.height()) ** suave
+            largura = extensao_inicial.width() * fator_largura
+            altura = extensao_inicial.height() * fator_altura
+
+            canvas.setExtent(QgsRectangle(
+                centro_x - largura / 2,
+                centro_y - altura / 2,
+                centro_x + largura / 2,
+                centro_y + altura / 2,
+            ))
+
+            if progresso >= 1.0:
+                timer.stop()
+                canvas.setExtent(extensao_alvo)
+                canvas.refresh()
+                timer.deleteLater()
+                dlg._timer_zoom_brasil = None
+
+        timer.timeout.connect(atualizar_enquadramento)
+        timer.start()
+
+    QTimer.singleShot(120, iniciar_animacao)
 
 
 def montar_texto_preview(dados: dict) -> str:

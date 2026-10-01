@@ -674,3 +674,77 @@ QProgressBar::chunk {
     border-right-color: #3b82f6;
     border-bottom-color: #3b82f6;
 }
+
+#scalePanel {
+    min-height: 142px;
+    background-color: #17191c;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 9px;
+    padding: 0;
+    margin: 0;
+}
+
+#scaleBenchTitle {
+    color: #e7e9ed;
+    font-size: 8pt;
+    font-weight: 600;
+}
+
+#scaleBenchHint {
+    color: #8c929a;
+    font-size: 7pt;
+}
+
+QFrame#layoutCard[layoutKey="001"] {
+    border-left: 2px solid #ec008b;
+}
+
+QFrame#layoutCard[layoutKey="002"] {
+    border-left: 2px solid #f79138;
+}
+
+QFrame#layoutCard[layoutKey="003"] {
+    border-left: 2px solid #00c4d2;
+}
+
+QLabel#scaleTitle[layoutKey="001"],
+QLabel#scaleValue[layoutKey="001"] {
+    color: #e79bc0;
+}
+
+QLabel#scaleTitle[layoutKey="002"],
+QLabel#scaleValue[layoutKey="002"] {
+    color: #f2b071;
+}
+
+QLabel#scaleTitle[layoutKey="003"],
+QLabel#scaleValue[layoutKey="003"] {
+    color: #71d8df;
+}
+
+QSlider#layoutScaleSlider[layoutKey="001"]::sub-page:horizontal {
+    background-color: #ec008b;
+}
+
+QSlider#layoutScaleSlider[layoutKey="001"]::handle:horizontal {
+    border-color: #ec008b;
+    background-color: #1b161b;
+}
+
+QSlider#layoutScaleSlider[layoutKey="002"]::sub-page:horizontal {
+    background-color: #f79138;
+}
+
+QSlider#layoutScaleSlider[layoutKey="002"]::handle:horizontal {
+    border-color: #f79138;
+    background-color: #1b1916;
+}
+
+QSlider#layoutScaleSlider[layoutKey="003"]::sub-page:horizontal {
+    background-color: #00c4d2;
+}
+
+QSlider#layoutScaleSlider[layoutKey="003"]::handle:horizontal {
+    border-color: #00c4d2;
+    background-color: #151b1c;
+}

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="kombai-design-canvas" content="true">
+  <script src="https://unpkg.com/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
+  <style>html, body { margin: 0; padding: 0; } #root { display: contents; }</style>
+</head><body>
+  <div id="root"><style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.48.0/dist/tabler-icons.min.css');
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #101214; color: #e7e9ed; font-family: Inter, 'Segoe UI', sans-serif; }
+body { min-width: 1100px; }
+.workbench { height: 940px; overflow: hidden; background: #101214; }
+.topbar { height: 62px; }
+.workspace { height: 798px; display: grid; grid-template-columns: 306px minmax(0,1fr) 278px; }
+.left-rail { overflow-y: auto; }
+.center-area { min-width: 0; display: flex; flex-direction: column; }
+.map-view { min-height: 0; flex: 1; position: relative; overflow: hidden; }
+.scale-bench { height: 206px; flex: 0 0 206px; }
+.right-rail { overflow-y: auto; }
+.control { height: 36px; }
+.row-track { position: relative; height: 4px; border-radius: 99px; background: #363b42; }
+.slider-thumb { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; border: 2px solid #17191c; transform: translate(-50%,-50%); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+@media(max-height:800px) { .workbench { height: 800px; } .workspace { height: 658px; } .scale-bench { height: 200px; flex-basis: 200px; } }
+</style>
+<div class="workbench flex flex-col min-h-screen w-full text-[#e7e9ed]" data-kid="1" data-name="application workbench container">
+    <header class="topbar flex items-center justify-between border-b border-white/10 bg-[#151719] px-6" data-kid="1-1" data-name="application top navigation bar">
+        <div class="flex items-center gap-3 min-w-0" data-kid="1-1-1" data-name="brand and project info container">
+            <img alt="Logotipo EstelarMapTools" class="h-9 w-9 object-contain" data-kid="1-1-1-1" data-name="estelarmaptools company logo" decoding="async" loading="lazy" src="../ui/assets/logo.png"/>
+            <div class="leading-tight" data-kid="1-1-1-2" data-name="project info text group">
+                <div class="text-[15px] font-semibold tracking-[-0.02em] text-[#f2f3f5]" data-kid="1-1-1-2-1" data-name="application title">
+                    EstelarMapTools
+                </div>
+                <div class="mt-0.5 text-[11px] text-[#949aa2]" data-kid="1-1-1-2-2" data-name="project subtitle status">
+                    Mapa de localização · novo projeto
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 text-[12px]" data-kid="1-1-2" data-name="project selection status indicator">
+            <span class="text-[#969ca5]" data-kid="1-1-2-1" data-name="project label">
+                Projeto
+            </span>
+            <span class="rounded-md border border-white/10 bg-white/[0.035] px-2.5 py-1.5 text-[#b8bdc5]" data-kid="1-1-2-2" data-name="project selection status text">
+                Ainda não selecionado
+            </span>
+            <button aria-label="Minimizar janela" class="grid h-8 w-8 place-items-center rounded text-[#aeb4bc] hover:bg-white/[0.06]" data-kid="1-1-2-3" data-name="window minimize button" title="Minimizar">
+                <i class="ti ti-minus text-[16px]" data-kid="1-1-2-3-1" data-name="window minimize icon">
+                </i>
+            </button>
+            <button aria-label="Fechar janela" class="grid h-8 w-8 place-items-center rounded text-[#aeb4bc] hover:bg-white/[0.06]" data-kid="1-1-2-4" data-name="window close button" title="Fechar">
+                <i class="ti ti-x text-[16px]" data-kid="1-1-2-4-1" data-name="window close icon">
+                </i>
+            </button>
+        </div>
+    </header>
+    <main class="workspace" data-kid="1-2" data-name="workspace main layout">
+        <aside class="left-rail border-r border-white/10 bg-[#141618] px-[18px] pt-[20px] pb-4" data-kid="1-2-1" data-name="configuration side rail">
+            <div class="mb-4 flex items-center justify-between" data-kid="1-2-1-1" data-name="configuration header container">
+                <h1 class="text-[15px] font-semibold tracking-[-0.02em] text-[#f0f1f3]" data-kid="1-2-1-1-1" data-name="configuration section title">
+                    Preparar projeto
+                </h1>
+            </div>
+            <div class="space-y-[15px]" data-kid="1-2-1-2" data-name="configuration forms container">
+                <section data-kid="1-2-1-2-1" data-name="project name input section">
+                    <label class="mb-1.5 block text-[12px] font-medium text-[#c3c7ce]" data-kid="1-2-1-2-1-1" data-name="project name label">
+                        Nome da obra
+                        <span class="text-[#dfaa69]" data-kid="1-2-1-2-1-1-1" data-name="required field asterisk">
+                            *
+                        </span>
+                    </label>
+                    <div class="control flex items-center gap-2 rounded-md border border-[#3a3f45] bg-[#1a1c1f] px-3 text-[12px] text-[#858c95]" data-kid="1-2-1-2-1-2" data-name="project name search field">
+                        <i aria-hidden="true" class="ti ti-search text-[15px] text-[#7d858f]" data-kid="1-2-1-2-1-2-1" data-name="search magnifying glass icon">
+                        </i>
+                        <span data-kid="1-2-1-2-1-2-2" data-name="project name placeholder text">
+                            Buscar ou digitar uma obra
+                        </span>
+                    </div>
+                </section>
+                <section class="grid grid-cols-2 gap-x-2.5" data-kid="1-2-1-2-2" data-name="quick profile and utm zone grid">
+                    <div data-kid="1-2-1-2-2-1" data-name="quick profile section">
+                        <label class="mb-1.5 block text-[12px] font-medium text-[#c3c7ce]" data-kid="1-2-1-2-2-1-1" data-name="quick profile label">
+                            Perfil rápido
+                        </label>
+                        <div class="control flex items-center justify-between rounded-md border border-[#3a3f45] bg-[#1a1c1f] px-3 text-[12px] text-[#e1e3e6]" data-kid="1-2-1-2-2-1-2" data-name="quick profile dropdown trigger">
+                            Padrão
+                            <i class="ti ti-chevron-down text-[14px] text-[#8d949c]" data-kid="1-2-1-2-2-1-2-1" data-name="quick profile dropdown icon">
+                            </i>
+                        </div>
+                    </div>
+                    <div data-kid="1-2-1-2-2-2" data-name="utm zone section">
+                        <label class="mb-1.5 block text-[12px] font-medium text-[#c3c7ce]" data-kid="1-2-1-2-2-2-1" data-name="utm zone label">
+                            Zona UTM
+                        </label>
+                        <div class="control flex items-center justify-between rounded-md border border-[#3a3f45] bg-[#1a1c1f] px-3 text-[12px] text-[#e1e3e6]" data-kid="1-2-1-2-2-2-2" data-name="utm zone dropdown trigger">
+                            Automático
+                            <i class="ti ti-chevron-down text-[14px] text-[#8d949c]" data-kid="1-2-1-2-2-2-2-1" data-name="utm zone dropdown icon">
+                            </i>
+                        </div>
+                    </div>
+                </section>
+                <section data-kid="1-2-1-2-3" data-name="project type section">
+                    <label class="mb-1.5 block text-[12px] font-medium text-[#c3c7ce]" data-kid="1-2-1-2-3-1" data-name="project type label">
+                        Tipo de projeto
+                    </label>
+                    <div class="control flex items-center justify-between rounded-md border border-[#3a3f45] bg-[#1a1c1f] px-3 text-[12px] text-[#e1e3e6]" data-kid="1-2-1-2-3-2" data-name="project type dropdown trigger">
+                        PCH
+                        <i class="ti ti-chevron-down text-[14px] text-[#8d949c]" data-kid="1-2-1-2-3-2-1" data-name="project type dropdown icon">
+                        </i>
+                    </div>
+                </section>
+                <button class="flex items-center gap-2 py-0.5 text-[12px] text-[#c3c7ce]" data-kid="1-2-1-2-4" data-name="advanced mode toggle button">
+                    <span class="h-[16px] w-[16px] rounded border border-[#535961] bg-[#1a1c1f]" data-kid="1-2-1-2-4-1" data-name="checkbox representation icon">
+                    </span>
+                    Modo avançado
+                </button>
+                <div class="h-px bg-white/[0.08]" data-kid="1-2-1-2-5" data-name="horizontal separator line">
+                </div>
+                <section data-kid="1-2-1-2-6" data-name="input file section">
+                    <div class="mb-2 flex items-center justify-between" data-kid="1-2-1-2-6-1" data-name="input file header container">
+                        <h2 class="text-[13px] font-semibold text-[#e8e9ec]" data-kid="1-2-1-2-6-1-1" data-name="input file header title">
+                            Arquivo de entrada
+                        </h2>
+                        <span class="text-[11px] text-[#a7adb5]" data-kid="1-2-1-2-6-1-2" data-name="input file requirement status">
+                            Obrigatório
+                        </span>
+                    </div>
+                    <div class="rounded-md border border-dashed border-[#565d66] bg-[#181a1d] px-3 py-3.5" data-kid="1-2-1-2-6-2" data-name="file upload drop zone">
+                        <div class="flex items-start gap-2.5" data-kid="1-2-1-2-6-2-1" data-name="file drop zone content container">
+                            <i aria-hidden="true" class="ti ti-file-import mt-0.5 text-[17px] text-[#aeb5bf]" data-kid="1-2-1-2-6-2-1-1" data-name="file import icon">
+                            </i>
+                            <div data-kid="1-2-1-2-6-2-1-2" data-name="file selection status group">
+                                <div class="text-[12px] font-medium text-[#e1e3e6]" data-kid="1-2-1-2-6-2-1-2-1" data-name="file status title">
+                                    Nenhum KML/KMZ selecionado
+                                </div>
+                                <p class="mt-1 text-[11px] leading-[1.45] text-[#a0a6ae]" data-kid="1-2-1-2-6-2-1-2-2" data-name="file status instructions">
+                                    Importe a geometria da área de estudo para carregar o mapa.
+                                </p>
+                            </div>
+                        </div>
+                        <button class="mt-3 flex h-8 w-full items-center justify-center gap-2 rounded border border-[#41474f] bg-[#222529] px-3 text-[12px] font-medium text-[#e8e9ec]" data-kid="1-2-1-2-6-2-2" data-name="select file button">
+                            <i aria-hidden="true" class="ti ti-folder-open text-[15px]" data-kid="1-2-1-2-6-2-2-1" data-name="select file folder icon">
+                            </i>
+                            Selecionar arquivo
+                        </button>
+                    </div>
+                </section>
+                <section data-kid="1-2-1-2-7" data-name="destination folder section">
+                    <div class="mb-2 flex items-center justify-between" data-kid="1-2-1-2-7-1" data-name="destination folder header container">
+                        <h2 class="text-[13px] font-semibold text-[#e8e9ec]" data-kid="1-2-1-2-7-1-1" data-name="destination folder header title">
+                            Pasta de destino
+                        </h2>
+                        <span class="text-[11px] text-[#a7adb5]" data-kid="1-2-1-2-7-1-2" data-name="destination folder requirement status">
+                            Obrigatório
+                        </span>
+                    </div>
+                    <div class="control flex items-center gap-2 rounded-md border border-[#3a3f45] bg-[#1a1c1f] px-2.5 text-[12px] text-[#8a9098]" data-kid="1-2-1-2-7-2" data-name="folder selection input field">
+                        <i aria-hidden="true" class="ti ti-folder text-[15px]" data-kid="1-2-1-2-7-2-1" data-name="folder selection folder icon">
+                        </i>
+                        <span class="flex-1 truncate" data-kid="1-2-1-2-7-2-2" data-name="current folder path text">
+                            Nenhuma pasta selecionada
+                        </span>
+                        <button aria-label="Selecionar pasta" class="h-7 w-7 rounded text-[#c3c8cf]" data-kid="1-2-1-2-7-2-3" data-name="select folder button">
+                            <i class="ti ti-folder-plus text-[16px]" data-kid="1-2-1-2-7-2-3-1" data-name="select folder plus icon">
+                            </i>
+                        </button>
+                    </div>
+                    <div class="mt-1.5 flex gap-4" data-kid="1-2-1-2-7-3" data-name="path management action group">
+                        <button class="flex items-center gap-1.5 text-[11px] text-[#777e87]" data-kid="1-2-1-2-7-3-1" data-name="open folder button" disabled="">
+                            <i class="ti ti-folder-open text-[14px]" data-kid="1-2-1-2-7-3-1-1" data-name="open folder icon">
+                            </i>
+                            Abrir pasta
+                        </button>
+                        <button class="flex items-center gap-1.5 text-[11px] text-[#777e87]" data-kid="1-2-1-2-7-3-2" data-name="copy path button" disabled="">
+                            <i class="ti ti-copy text-[14px]" data-kid="1-2-1-2-7-3-2-1" data-name="copy path icon">
+                            </i>
+                            Copiar caminho
+                        </button>
+                    </div>
+                    <p class="mt-2 text-[11px] leading-[1.45] text-[#9ba1a9]" data-kid="1-2-1-2-7-4" data-name="folder destination disclaimer">
+                        O GeoPackage será copiado para
+                        <span class="text-[#c4c8ce]" data-kid="1-2-1-2-7-4-1" data-name="destination folder name highlight">
+                            BASES
+                        </span>
+                        ; a origem permanece intacta.
+                    </p>
+                </section>
+            </div>
+        </aside>
+        <section class="center-area bg-[#101214]" data-kid="1-2-2" data-name="map view center area">
+            <div class="flex h-[48px] shrink-0 items-center justify-between border-b border-white/[0.08] px-4" data-kid="1-2-2-1" data-name="map view header bar">
+                <div class="flex items-center gap-2 text-[12px]" data-kid="1-2-2-1-1" data-name="map view status indicator group">
+                    <i class="ti ti-map-2 text-[16px] text-[#aab1ba]" data-kid="1-2-2-1-1-1" data-name="map view header icon">
+                    </i>
+                    <span class="font-medium text-[#e1e3e6]" data-kid="1-2-2-1-1-2" data-name="map view title">
+                        Visualização do mapa
+                    </span>
+                    <span class="text-[#717881]" data-kid="1-2-2-1-1-3" data-name="path separator text">
+                        /
+                    </span>
+                    <span class="text-[#9299a2]" data-kid="1-2-2-1-1-4" data-name="map status subtitle">
+                        Aguardando KML/KMZ
+                    </span>
+                </div>
+                <div class="flex items-center gap-1 rounded-md border border-white/[0.09] bg-[#191b1e] p-1 text-[11px]" data-kid="1-2-2-1-2" data-name="map view toggle button group">
+                    <button class="rounded bg-[#34383e] px-2.5 py-1.5 font-medium text-[#f0f1f3]" data-kid="1-2-2-1-2-1" data-name="satellite view button">
+                        Satélite
+                    </button>
+                    <button class="rounded px-2.5 py-1.5 text-[#a7adb5]" data-kid="1-2-2-1-2-2" data-name="base map view button">
+                        Mapa
+                    </button>
+                    <button class="rounded px-2.5 py-1.5 text-[#a7adb5]" data-kid="1-2-2-1-2-3" data-name="no cities map view button">
+                        Sem cidades
+                    </button>
+                </div>
+            </div>
+            <div class="map-view bg-[#182025]" data-kid="1-2-2-2" data-name="interactive map canvas area">
+                <img alt="Vista aérea de painéis solares em terreno árido — foto de Charl Durand, Pexels" class="absolute inset-0 h-full w-full object-cover" data-kid="1-2-2-2-1" data-name="map background imagery" decoding="async" loading="lazy" src="https://images.pexels.com/photos/6996421/pexels-photo-6996421.jpeg?auto=compress&cs=tinysrgb&w=1400&q=80"/>
+                <div class="absolute inset-0 bg-[#0b1116]/[0.19]" data-kid="1-2-2-2-2" data-name="map overlay gradient">
+                </div>
+                <div class="absolute inset-0 opacity-[0.13]" data-kid="1-2-2-2-3" data-name="map coordinate grid overlay" style="background-image:linear-gradient(rgba(230,235,240,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(230,235,240,.5) 1px,transparent 1px);background-size:72px 72px">
+                </div>
+                <div class="absolute left-4 top-4 rounded-md border border-white/15 bg-[#14191e]/90 px-3 py-2 text-[12px] text-[#e9ebee]" data-kid="1-2-2-2-4" data-name="map missing geometry alert banner">
+                    <div class="flex items-center gap-2" data-kid="1-2-2-2-4-1" data-name="alert header group">
+                        <i class="ti ti-map-pin-off text-[15px] text-[#c1c5ca]" data-kid="1-2-2-2-4-1-1" data-name="alert icon">
+                        </i>
+                        <span class="font-medium" data-kid="1-2-2-2-4-1-2" data-name="alert title text">
+                            Sem geometria carregada
+                        </span>
+                    </div>
+                    <div class="mt-1 text-[11px] text-[#b1b6bd]" data-kid="1-2-2-2-4-2" data-name="alert description text">
+                        Selecione um KML/KMZ para ver a área de estudo.
+                    </div>
+                </div>
+                <div class="absolute bottom-3 left-4 flex items-center gap-2 rounded bg-[#14191e]/85 px-2.5 py-1.5 text-[10px] text-[#d0d4d9]" data-kid="1-2-2-2-5" data-name="map reference info bar">
+                    <span data-kid="1-2-2-2-5-1" data-name="reference label">
+                        Base de referência
+                    </span>
+                    <span class="text-white/30" data-kid="1-2-2-2-5-2" data-name="reference separator dot">
+                        ·
+                    </span>
+                    <span data-kid="1-2-2-2-5-3" data-name="reference detail text">
+                        Visual ilustrativa
+                    </span>
+                </div>
+                <div class="absolute bottom-3 right-4 flex items-center gap-2 rounded bg-[#14191e]/85 px-2.5 py-1.5 text-[10px] tabular-nums text-[#d0d4d9]" data-kid="1-2-2-2-6" data-name="map coordinates status bar">
+                    <span data-kid="1-2-2-2-6-1" data-name="utm status label">
+                        UTM automático
+                    </span>
+                    <span class="text-white/30" data-kid="1-2-2-2-6-2" data-name="utm separator dot">
+                        ·
+                    </span>
+                    <span data-kid="1-2-2-2-6-3" data-name="coordinate detail text">
+                        Sem coordenadas
+                    </span>
+                </div>
+                <div class="absolute right-4 top-4 flex flex-col overflow-hidden rounded-md border border-white/15 bg-[#171a1e]/90" data-kid="1-2-2-2-7" data-name="map zoom controls container">
+                    <button aria-label="Aproximar mapa" class="grid h-8 w-8 place-items-center text-[17px] text-[#e0e3e6]" data-kid="1-2-2-2-7-1" data-name="zoom in button">
+                        +
+                    </button>
+                    <div class="h-px bg-white/10" data-kid="1-2-2-2-7-2" data-name="zoom control separator line">
+                    </div>
+                    <button aria-label="Afastar mapa" class="grid h-8 w-8 place-items-center text-[17px] text-[#e0e3e6]" data-kid="1-2-2-2-7-3" data-name="zoom out button">
+                        −
+                    </button>
+                </div>
+            </div>
+            <section class="scale-bench border-t border-white/10 bg-[#17191c] px-4 pt-2.5 pb-3" data-kid="1-2-2-3" data-name="layout scaling workbench area">
+                <div class="mb-2 flex items-center justify-between" data-kid="1-2-2-3-1" data-name="scaling workbench header">
+                    <div class="text-[12px] font-medium text-[#e7e9ec]" data-kid="1-2-2-3-1-1" data-name="scaling workbench title">
+                        Extensões dos layouts
+                    </div>
+                    <div class="text-[11px] text-[#a3a9b1]" data-kid="1-2-2-3-1-2" data-name="scaling workbench instructions">
+                        Arraste no mapa para reposicionar extensões desbloqueadas
+                    </div>
+                </div>
+                <div class="grid grid-cols-[1fr_1fr_1fr] gap-0 divide-x divide-white/[0.08]" data-kid="1-2-2-3-2" data-name="layout rows container">
+                    <div class="pr-4" data-kid="1-2-2-3-2-1" data-name="layout 1 row">
+                        <div class="flex h-[30px] items-center gap-2" data-kid="1-2-2-3-2-1-1" data-name="layout 1 info group">
+                            <span class="h-2.5 w-2.5 rounded-full bg-[#d38aa9]" data-kid="1-2-2-3-2-1-1-1" data-name="layout 1 color indicator">
+                            </span>
+                            <span class="text-[12px] font-semibold text-[#e6e8eb]" data-kid="1-2-2-3-2-1-1-2" data-name="layout 1 name label">
+                                Layout 1
+                            </span>
+                            <span class="ml-1 truncate text-[10px] text-[#b69aa7]" data-kid="1-2-2-3-2-1-1-3" data-name="layout 1 description text">
+                                Área usada no recorte
+                            </span>
+                            <span class="ml-auto whitespace-nowrap font-mono text-[11px] tabular-nums text-[#f0c8d8]" data-kid="1-2-2-3-2-1-1-4" data-name="layout 1 scale text">
+                                1:500.000
+                            </span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-2" data-kid="1-2-2-3-2-1-2" data-name="layout 1 control group">
+                            <div class="row-track flex-1" data-kid="1-2-2-3-2-1-2-1" data-name="layout 1 slider track">
+                                <span class="absolute inset-y-0 left-0 rounded-full bg-[#d38aa9]" data-dynamic="true" data-kid="1-2-2-3-2-1-2-1-1" data-name="layout 1 slider fill bar" data-reason="width updated by interactive slider state" style="width:34%">
+                                </span>
+                                <span class="slider-thumb bg-[#d38aa9]" data-dynamic="true" data-kid="1-2-2-3-2-1-2-1-2" data-name="layout 1 slider thumb" data-reason="position updated by interactive slider state" style="left:34%">
+                                </span>
+                            </div>
+                            <button aria-label="Desbloqueado; bloquear Layout 1" class="ml-2 flex items-center gap-1.5 rounded px-1.5 py-1 text-[10px] text-[#b6bdc5]" data-kid="1-2-2-3-2-1-2-2" data-name="layout 1 lock toggle button">
+                                <i class="ti ti-lock-open text-[14px] text-[#d38aa9]" data-kid="1-2-2-3-2-1-2-2-1" data-name="layout 1 lock icon">
+                                </i>
+                                Desbloqueado
+                            </button>
+                        </div>
+                    </div>
+                    <div class="px-4" data-kid="1-2-2-3-2-2" data-name="layout 2 row">
+                        <div class="flex h-[30px] items-center gap-2" data-kid="1-2-2-3-2-2-1" data-name="layout 2 info group">
+                            <span class="h-2.5 w-2.5 rounded-full bg-[#dfa35f]" data-kid="1-2-2-3-2-2-1-1" data-name="layout 2 color indicator">
+                            </span>
+                            <span class="text-[12px] font-semibold text-[#e6e8eb]" data-kid="1-2-2-3-2-2-1-2" data-name="layout 2 name label">
+                                Layout 2
+                            </span>
+                            <span class="ml-auto whitespace-nowrap font-mono text-[11px] tabular-nums text-[#e7bd8b]" data-kid="1-2-2-3-2-2-1-3" data-name="layout 2 scale text">
+                                1:100.000
+                            </span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-2" data-kid="1-2-2-3-2-2-2" data-name="layout 2 control group">
+                            <div class="row-track flex-1" data-kid="1-2-2-3-2-2-2-1" data-name="layout 2 slider track">
+                                <span class="absolute inset-y-0 left-0 rounded-full bg-[#dfa35f]" data-dynamic="true" data-kid="1-2-2-3-2-2-2-1-1" data-name="layout 2 slider fill bar" data-reason="width updated by interactive slider state" style="width:22%">
+                                </span>
+                                <span class="slider-thumb bg-[#dfa35f]" data-dynamic="true" data-kid="1-2-2-3-2-2-2-1-2" data-name="layout 2 slider thumb" data-reason="position updated by interactive slider state" style="left:22%">
+                                </span>
+                            </div>
+                            <button aria-label="Desbloqueado; bloquear Layout 2" class="ml-2 flex items-center gap-1.5 rounded px-1.5 py-1 text-[10px] text-[#b6bdc5]" data-kid="1-2-2-3-2-2-2-2" data-name="layout 2 lock toggle button">
+                                <i class="ti ti-lock-open text-[14px] text-[#dfa35f]" data-kid="1-2-2-3-2-2-2-2-1" data-name="layout 2 lock icon">
+                                </i>
+                                Desbloqueado
+                            </button>
+                        </div>
+                    </div>
+                    <div class="pl-4" data-kid="1-2-2-3-2-3" data-name="layout 3 row">
+                        <div class="flex h-[30px] items-center gap-2" data-kid="1-2-2-3-2-3-1" data-name="layout 3 info group">
+                            <span class="h-2.5 w-2.5 rounded-full bg-[#69ad90]" data-kid="1-2-2-3-2-3-1-1" data-name="layout 3 color indicator">
+                            </span>
+                            <span class="text-[12px] font-semibold text-[#e6e8eb]" data-kid="1-2-2-3-2-3-1-2" data-name="layout 3 name label">
+                                Layout 3
+                            </span>
+                            <span class="ml-auto whitespace-nowrap font-mono text-[11px] tabular-nums text-[#a6d1bd]" data-kid="1-2-2-3-2-3-1-3" data-name="layout 3 scale text">
+                                1:25.000
+                            </span>
+                        </div>
+                        <div class="mt-1.5 flex items-center gap-2" data-kid="1-2-2-3-2-3-2" data-name="layout 3 control group">
+                            <div class="row-track flex-1" data-kid="1-2-2-3-2-3-2-1" data-name="layout 3 slider track">
+                                <span class="absolute inset-y-0 left-0 rounded-full bg-[#69ad90]" data-dynamic="true" data-kid="1-2-2-3-2-3-2-1-1" data-name="layout 3 slider fill bar" data-reason="width updated by interactive slider state" style="width:18%">
+                                </span>
+                                <span class="slider-thumb bg-[#69ad90]" data-dynamic="true" data-kid="1-2-2-3-2-3-2-1-2" data-name="layout 3 slider thumb" data-reason="position updated by interactive slider state" style="left:18%">
+                                </span>
+                            </div>
+                            <button aria-label="Desbloqueado; bloquear Layout 3" class="ml-2 flex items-center gap-1.5 rounded px-1.5 py-1 text-[10px] text-[#b6bdc5]" data-kid="1-2-2-3-2-3-2-2" data-name="layout 3 lock toggle button">
+                                <i class="ti ti-lock-open text-[14px] text-[#69ad90]" data-kid="1-2-2-3-2-3-2-2-1" data-name="layout 3 lock icon">
+                                </i>
+                                Desbloqueado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-2.5 flex items-center gap-3 border-t border-white/[0.08] pt-2 text-[10px] text-[#a7adb5]" data-kid="1-2-2-3-3" data-name="map extensions legend">
+                    <span class="font-medium text-[#c4c8ce]" data-kid="1-2-2-3-3-1" data-name="legend section title">
+                        Extensões no mapa
+                    </span>
+                    <span class="flex items-center gap-1.5" data-kid="1-2-2-3-3-2" data-name="legend item 1">
+                        <i class="h-2 w-2 rounded-full bg-[#d38aa9]" data-kid="1-2-2-3-3-2-1" data-name="legend item 1 color dot">
+                        </i>
+                        Layout 1 · recorte
+                    </span>
+                    <span class="flex items-center gap-1.5" data-kid="1-2-2-3-3-3" data-name="legend item 2">
+                        <i class="h-2 w-2 rounded-full bg-[#dfa35f]" data-kid="1-2-2-3-3-3-1" data-name="legend item 2 color dot">
+                        </i>
+                        Layout 2
+                    </span>
+                    <span class="flex items-center gap-1.5" data-kid="1-2-2-3-3-4" data-name="legend item 3">
+                        <i class="h-2 w-2 rounded-full bg-[#69ad90]" data-kid="1-2-2-3-3-4-1" data-name="legend item 3 color dot">
+                        </i>
+                        Layout 3
+                    </span>
+                </div>
+            </section>
+        </section>
+        <aside class="right-rail border-l border-white/10 bg-[#141618] px-4 pt-5 pb-4" data-kid="1-2-3" data-name="review side rail">
+            <div class="mb-1 text-[15px] font-semibold tracking-[-0.02em] text-[#f0f1f3]" data-kid="1-2-3-1" data-name="review title">
+                Revisão
+            </div>
+            <p class="mb-4 text-[11px] leading-[1.45] text-[#a0a6ae]" data-kid="1-2-3-2" data-name="review description">
+                Pendências para habilitar a geração.
+            </p>
+            <ul class="space-y-3" data-kid="1-2-3-3" data-name="pendencies list">
+                <li class="flex items-start gap-2.5" data-kid="1-2-3-3-1" data-name="pendency 1">
+                    <i aria-hidden="true" class="ti ti-circle-dashed mt-0.5 text-[16px] text-[#c28a47]" data-kid="1-2-3-3-1-1" data-name="pendency 1 status icon">
+                    </i>
+                    <div data-kid="1-2-3-3-1-2" data-name="pendency 1 text group">
+                        <div class="text-[12px] font-medium text-[#e0e2e5]" data-kid="1-2-3-3-1-2-1" data-name="pendency 1 title">
+                            Nome da obra
+                        </div>
+                        <div class="mt-0.5 text-[11px] text-[#a0a6ae]" data-kid="1-2-3-3-1-2-2" data-name="pendency 1 description">
+                            Selecione ou informe a obra.
+                        </div>
+                    </div>
+                </li>
+                <li class="flex items-start gap-2.5" data-kid="1-2-3-3-2" data-name="pendency 2">
+                    <i aria-hidden="true" class="ti ti-circle-dashed mt-0.5 text-[16px] text-[#c28a47]" data-kid="1-2-3-3-2-1" data-name="pendency 2 status icon">
+                    </i>
+                    <div data-kid="1-2-3-3-2-2" data-name="pendency 2 text group">
+                        <div class="text-[12px] font-medium text-[#e0e2e5]" data-kid="1-2-3-3-2-2-1" data-name="pendency 2 title">
+                            Geometria KML/KMZ
+                        </div>
+                        <div class="mt-0.5 text-[11px] text-[#a0a6ae]" data-kid="1-2-3-3-2-2-2" data-name="pendency 2 description">
+                            Nenhum arquivo carregado.
+                        </div>
+                    </div>
+                </li>
+                <li class="flex items-start gap-2.5" data-kid="1-2-3-3-3" data-name="pendency 3">
+                    <i aria-hidden="true" class="ti ti-circle-dashed mt-0.5 text-[16px] text-[#c28a47]" data-kid="1-2-3-3-3-1" data-name="pendency 3 status icon">
+                    </i>
+                    <div data-kid="1-2-3-3-3-2" data-name="pendency 3 text group">
+                        <div class="text-[12px] font-medium text-[#e0e2e5]" data-kid="1-2-3-3-3-2-1" data-name="pendency 3 title">
+                            Pasta de destino
+                        </div>
+                        <div class="mt-0.5 text-[11px] text-[#a0a6ae]" data-kid="1-2-3-3-3-2-2" data-name="pendency 3 description">
+                            Escolha onde salvar o projeto.
+                        </div>
+                    </div>
+                </li>
+            </ul>
+            <div class="my-4 h-px bg-white/[0.08]" data-kid="1-2-3-4" data-name="section separator line">
+            </div>
+            <details class="group" data-kid="1-2-3-5" data-name="technical summary collapsible section">
+                <summary class="flex cursor-pointer list-none items-center justify-between py-1 text-[12px] font-medium text-[#d8dbe0]" data-kid="1-2-3-5-1" data-name="technical summary header">
+                    <span data-kid="1-2-3-5-1-1" data-name="technical summary title">
+                        Resumo técnico
+                    </span>
+                    <i class="ti ti-chevron-down text-[14px] text-[#969da6]" data-kid="1-2-3-5-1-2" data-name="technical summary chevron icon">
+                    </i>
+                </summary>
+                <p class="pt-1 text-[11px] leading-[1.5] text-[#9ea4ac]" data-kid="1-2-3-5-2" data-name="technical summary content text">
+                    Município, UF, zona UTM e área serão informados após o carregamento válido da geometria.
+                </p>
+            </details>
+            <div class="my-3 h-px bg-white/[0.08]" data-kid="1-2-3-6" data-name="section separator line">
+            </div>
+            <details data-kid="1-2-3-7" data-name="technical register collapsible section">
+                <summary class="flex cursor-pointer list-none items-center justify-between py-1 text-[12px] font-medium text-[#d8dbe0]" data-kid="1-2-3-7-1" data-name="technical register header">
+                    <span data-kid="1-2-3-7-1-1" data-name="technical register title">
+                        Registro técnico
+                    </span>
+                    <i class="ti ti-chevron-down text-[14px] text-[#969da6]" data-kid="1-2-3-7-1-2" data-name="technical register chevron icon">
+                    </i>
+                </summary>
+                <p class="pt-1 text-[11px] leading-[1.5] text-[#9ea4ac]" data-kid="1-2-3-7-2" data-name="technical register content text">
+                    O registro de importação e geração ficará disponível durante a execução.
+                </p>
+            </details>
+            <div class="mt-5 border-t border-white/[0.08] pt-3" data-kid="1-2-3-8" data-name="project result section">
+                <div class="text-[11px] font-medium text-[#cdd1d7]" data-kid="1-2-3-8-1" data-name="project result section title">
+                    Resultado do projeto
+                </div>
+                <p class="mt-1 text-[11px] leading-[1.45] text-[#9ba1a9]" data-kid="1-2-3-8-2" data-name="project result description">
+                    O caminho do arquivo e as opções para abri-lo aparecem após a geração.
+                </p>
+            </div>
+        </aside>
+    </main>
+    <footer class="flex h-[80px] shrink-0 items-center justify-between border-t border-white/10 bg-[#17191c] px-6" data-kid="1-3" data-name="footer action bar">
+        <button class="flex items-center gap-2 text-[12px] font-medium text-[#b1b6bd]" data-kid="1-3-1" data-name="reset template button">
+            <i class="ti ti-rotate-2 text-[15px]" data-kid="1-3-1-1" data-name="reset template icon">
+            </i>
+            Resetar template
+        </button>
+        <div class="flex items-center gap-4" data-kid="1-3-2" data-name="generation action group">
+            <span class="text-[11px] text-[#a0a6ae]" data-kid="1-3-2-1" data-name="pendency count text">
+                3 requisitos pendentes
+            </span>
+            <button aria-disabled="true" class="flex h-10 items-center gap-2 rounded-md bg-[#397de1] px-5 text-[12px] font-semibold text-white opacity-60" data-kid="1-3-2-2" data-name="generate project button" title="Preencha os itens obrigatórios para gerar o projeto">
+                <i class="ti ti-player-play-filled text-[14px]" data-kid="1-3-2-2-1" data-name="generate project play icon">
+                </i>
+                Gerar projeto
+            </button>
+        </div>
+    </footer>
+</div>
+</div>
+</body></html>
