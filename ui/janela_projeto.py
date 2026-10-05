@@ -15,6 +15,7 @@ plugin.
 
 from qgis.PyQt.QtCore import (
     QEvent,
+    QRectF,
     QPropertyAnimation,
     QEasingCurve,
     QSequentialAnimationGroup,
@@ -58,6 +59,8 @@ from ..core import preview as core_preview
 from ..core import projeto as core_projeto
 from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
+from .cursor_theme import cursor_estelar
+from .surface_effects import aplicar_sombra_superficie
 import os
 
 
@@ -126,6 +129,53 @@ def _caminho_icone(pontos):
     return caminho
 
 
+class MolduraMapa(QWidget):
+    """Mantém o canvas GIS atrás de um contorno arredondado antialiasado."""
+
+    RAIO_CANTO = 16.0
+    LARGURA_BORDA = 1.0
+    COR_BORDA = QColor("#2b2a2a")
+    COR_CANTOS = QColor("#111112")
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+    def paintEvent(self, _event):
+        if self.width() <= 1 or self.height() <= 1:
+            return
+
+        limites = QRectF(self.rect())
+        area_externa = QPainterPath()
+        area_externa.addRect(limites)
+        area_interna = QPainterPath()
+        area_interna.addRoundedRect(
+            limites.adjusted(1.0, 1.0, -1.0, -1.0),
+            self.RAIO_CANTO - 1.0,
+            self.RAIO_CANTO - 1.0,
+        )
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.COR_CANTOS)
+        painter.drawPath(area_externa.subtracted(area_interna))
+
+        caminho_borda = QPainterPath()
+        caminho_borda.addRoundedRect(
+            limites.adjusted(0.5, 0.5, -0.5, -0.5),
+            self.RAIO_CANTO,
+            self.RAIO_CANTO,
+        )
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(self.COR_BORDA, self.LARGURA_BORDA))
+        painter.drawPath(caminho_borda)
+        painter.end()
+
+
 class LuzAmbienteNeon(QWidget):
     """Camada decorativa leve, sem interação, para dar profundidade ao painel."""
 
@@ -155,14 +205,14 @@ class LuzAmbienteNeon(QWidget):
         deslocamento = (self._fase * 2.0) - 0.5
 
         pontos = [
-            (largura * (0.15 + deslocamento * 0.22), altura * 0.20, (0, 229, 255)),
-            (largura * (0.85 - deslocamento * 0.18), altura * 0.78, (8, 113, 180)),
+            (largura * (0.15 + deslocamento * 0.22), altura * 0.20, (70, 113, 184)),
+            (largura * (0.85 - deslocamento * 0.18), altura * 0.78, (255, 140, 0)),
         ]
         for x, y, cor in pontos:
             raio = max(largura, altura) * 0.42
             gradiente = QRadialGradient(x, y, raio)
-            gradiente.setColorAt(0.0, QColor(cor[0], cor[1], cor[2], 18))
-            gradiente.setColorAt(0.55, QColor(cor[0], cor[1], cor[2], 7))
+            gradiente.setColorAt(0.0, QColor(cor[0], cor[1], cor[2], 50))
+            gradiente.setColorAt(0.55, QColor(cor[0], cor[1], cor[2], 25))
             gradiente.setColorAt(1.0, QColor(cor[0], cor[1], cor[2], 0))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(gradiente)
@@ -267,6 +317,42 @@ class JanelaProjeto(QDialog):
         self._animacao_aba = animacao
         self._animar_cartoes(pagina)
 
+    def _aplicar_sombras_superficies(self, raiz: QWidget) -> None:
+        alvos = []
+        ids_alvos = set()
+
+        def adicionar(widget: QWidget) -> None:
+            identificador = id(widget)
+            if identificador not in ids_alvos:
+                ids_alvos.add(identificador)
+                alvos.append(widget)
+
+        for cartao in raiz.findChildren(QGroupBox):
+            if cartao.objectName() != "validationPanel":
+                adicionar(cartao)
+
+        nomes_superficie = {
+            "validationRow",
+            "scalePanel",
+            "statusInfo",
+            "logPanel",
+            "hubCurrentProject",
+            "hubToolCard",
+            "hubEmptyHint",
+        }
+        for widget in raiz.findChildren(QWidget):
+            if widget.objectName() in nomes_superficie:
+                adicionar(widget)
+
+        for widget in alvos:
+            aplicar_sombra_superficie(widget)
+
+    def _restaurar_sombras_cartoes(self, cartoes) -> None:
+        for cartao in cartoes:
+            if isinstance(cartao.graphicsEffect(), QGraphicsOpacityEffect):
+                cartao.setGraphicsEffect(None)
+            aplicar_sombra_superficie(cartao)
+
     def _animar_cartoes(self, pagina: QWidget) -> None:
         cartoes = pagina.findChildren(QGroupBox)
         if not cartoes:
@@ -292,6 +378,9 @@ class JanelaProjeto(QDialog):
             sequencia.addAnimation(entrada)
             sequencia.addAnimation(pausa)
 
+        sequencia.finished.connect(
+            lambda cartoes=tuple(cartoes): self._restaurar_sombras_cartoes(cartoes)
+        )
         sequencia.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
         self._animacao_cartoes = sequencia
 
@@ -342,6 +431,8 @@ class JanelaProjeto(QDialog):
         self.setWindowFlags(
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
+        self._cursor_estelar = cursor_estelar()
+        self.setCursor(self._cursor_estelar)
         tela = QApplication.primaryScreen()
         if tela is None:
             self.resize(1380, 840)
@@ -426,7 +517,7 @@ class JanelaProjeto(QDialog):
             linha_validacao.setObjectName("validationRow")
             linha_validacao.setProperty("state", "pending")
             layout_linha = QHBoxLayout(linha_validacao)
-            layout_linha.setContentsMargins(10, 6, 10, 6)
+            layout_linha.setContentsMargins(16, 16, 16, 16)
             layout_linha.setSpacing(9)
 
             indicador = QLabel("–")
@@ -449,6 +540,7 @@ class JanelaProjeto(QDialog):
         self.resumo_geracao.setObjectName("summaryPanel")
         self.resumo_geracao.setMaximumHeight(170)
         layout_resumo_geracao = QVBoxLayout()
+        layout_resumo_geracao.setContentsMargins(0, 0, 0, 0)
         self.lbl_resumo_geracao = QLabel()
         self.lbl_resumo_geracao.setWordWrap(True)
         self.lbl_resumo_geracao.setObjectName("summaryInfo")
@@ -512,6 +604,7 @@ class JanelaProjeto(QDialog):
         self._atualizar_fluxo_geracao()
 
         self.setLayout(layout_principal)
+        self._aplicar_sombras_superficies(self)
         self._iniciar_animacoes_ambiente()
         QTimer.singleShot(0, lambda: self._animar_cartoes(hub))
 
@@ -848,6 +941,7 @@ class JanelaProjeto(QDialog):
 
         self._preview_tool = core_preview.PreviewMoveTool(self.canvas_preview, self)
         self.canvas_preview.setMapTool(self._preview_tool)
+        self.canvas_preview.setCursor(self._cursor_estelar)
 
         try:
             self.camada_base = core_kml.obter_camada_fundo(self._estilo_mapa)
@@ -860,6 +954,7 @@ class JanelaProjeto(QDialog):
             self.canvas_preview.setLayers([])
 
         mapa_container = QWidget()
+        mapa_container.setObjectName("mapCanvasContainer")
         mapa_layout = QGridLayout(mapa_container)
         mapa_layout.setContentsMargins(0, 0, 0, 0)
         mapa_layout.setSpacing(0)
@@ -912,6 +1007,11 @@ class JanelaProjeto(QDialog):
 
         mapa_layout.addWidget(preview_overlay, 0, 0)
         preview_overlay.lower()
+
+        moldura_mapa = MolduraMapa(mapa_container)
+        moldura_mapa.setObjectName("mapCanvasFrame")
+        mapa_layout.addWidget(moldura_mapa, 0, 0)
+        moldura_mapa.raise_()
         grupo_layout.addWidget(mapa_container, 1)
 
         layout.addWidget(grupo_preview, 1)
@@ -920,7 +1020,7 @@ class JanelaProjeto(QDialog):
         panel_escala.setObjectName("scalePanel")
         panel_escala.setMinimumHeight(82)
         layout_escala = QVBoxLayout(panel_escala)
-        layout_escala.setContentsMargins(8, 6, 8, 6)
+        layout_escala.setContentsMargins(16, 16, 16, 16)
         layout_escala.setSpacing(0)
 
         grade_escala = QGridLayout()
@@ -1007,6 +1107,7 @@ class JanelaProjeto(QDialog):
     def _construir_layouts_escala(self, layout: QVBoxLayout) -> None:
         grupo_layouts = QGroupBox("Escalas e layouts")
         grupo_layout = QVBoxLayout()
+        grupo_layout.setContentsMargins(0, 0, 0, 0)
 
         self.spin_001 = self._criar_slider_escala(grupo_layout, "001", "LAYOUT 1 (VERMELHO)", "lbl_001")
         self.spin_002 = self._criar_slider_escala(grupo_layout, "002", "LAYOUT 2 (AZUL)", "lbl_002")
@@ -1026,7 +1127,7 @@ class JanelaProjeto(QDialog):
         card = QWidget()
         card.setObjectName("layoutCard")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(8, 8, 8, 8)
+        card_layout.setContentsMargins(16, 16, 16, 16)
         card_layout.setSpacing(6)
 
         self._criar_slider_escala(card_layout, chave, titulo, nome_label)

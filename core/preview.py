@@ -321,6 +321,8 @@ class PreviewMoveTool(QgsMapToolIdentify):
         self._centros_originais = {}
 
     def setCursor(self, cursor):
+        if cursor == Qt.CursorShape.ArrowCursor:
+            cursor = getattr(self.dlg, "_cursor_estelar", cursor)
         try:
             self.canvas().setCursor(cursor)
         except Exception:

@@ -27,6 +27,8 @@ from ..core.module_registry import ModuleRegistry
 from ..estelar_hub.services.project_manager import ProjectManager
 from ..estelar_hub.services.settings import SettingsService
 from ..estelar_hub.module_context import ModuleContext
+from .cursor_theme import cursor_estelar
+from .surface_effects import aplicar_sombra_superficie
 
 
 def _caminho_icone(pontos, fechar=False):
@@ -224,10 +226,13 @@ class HubToolCard(QFrame):
         self.can_launch = bool(module.is_active and can_launch)
         self.setObjectName("hubToolCard")
         self.setProperty("moduleStatus", "active" if self.can_launch else "upcoming")
-        self.setCursor(Qt.CursorShape.PointingHandCursor if self.can_launch else Qt.CursorShape.ArrowCursor)
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor if self.can_launch else cursor_estelar()
+        )
+        aplicar_sombra_superficie(self)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 13, 14, 12)
+        layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(9)
 
         top = QHBoxLayout()
@@ -363,6 +368,7 @@ class EstelarHubDialog(QDialog):
         self.setObjectName("estelarHubDialog")
         self.setWindowTitle("Estelar Hub")
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
+        self.setCursor(cursor_estelar())
         self._set_initial_size()
         self._load_styles()
         self._build_ui()
@@ -552,6 +558,7 @@ class EstelarHubDialog(QDialog):
         favorites_layout.addLayout(self._favorites_content)
         self._favorites_empty = QLabel("Use a estrela de uma ferramenta para fixá-la aqui.")
         self._favorites_empty.setObjectName("hubEmptyHint")
+        aplicar_sombra_superficie(self._favorites_empty)
         favorites_layout.addWidget(self._favorites_empty)
         layout.addWidget(self.favorites_section)
 
@@ -609,8 +616,9 @@ class EstelarHubDialog(QDialog):
 
         row = QFrame()
         row.setObjectName("hubCurrentProject")
+        aplicar_sombra_superficie(row)
         row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(12, 10, 12, 10)
+        row_layout.setContentsMargins(16, 16, 16, 16)
         row_layout.setSpacing(12)
 
         details = QVBoxLayout()
@@ -800,6 +808,7 @@ class EstelarHubDialog(QDialog):
         if not self._recent_projects:
             empty = QLabel("Nenhum projeto recente. Abra ou salve um projeto no QGIS para vê-lo aqui.")
             empty.setObjectName("hubEmptyHint")
+            aplicar_sombra_superficie(empty)
             empty.setWordWrap(True)
             self._recent_content.addWidget(empty)
             return
