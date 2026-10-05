@@ -433,14 +433,14 @@ def _adicionar_rotulo_preview(dlg, nome_layout: str, retangulo: QgsRectangle) ->
         "LAYOUT 3": "#00c4d2",
     }
     cor_layout = cores_layout.get(nome_layout, "#1e49b1")
-    tamanho_fonte = "5pt" if nome_layout == "LAYOUT 3" else "6.5pt"
-    espacamento = "1px 2px" if nome_layout == "LAYOUT 3" else "1px 4px"
+    tamanho_fonte = "7pt" 
+    espacamento = "1px 2px" 
     label = QLabel(nome_layout, canvas.viewport())
     label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
     label.setStyleSheet(
         "QLabel {"
         "  color: #17212b;"
-        "  background-color: rgba(255,255,255,235);"
+        "  background-color: rgba(255,255,255,100);"
         f"  border: 1px solid {cor_layout};"
         "  border-radius: 4px;"
         f"  padding: {espacamento};"
@@ -482,7 +482,7 @@ def _atualizar_aviso_preview(dlg, retangulos):
     aviso.setStyleSheet(
         "QLabel {"
         "  color: #7c2d12;"
-        "  background: rgba(255, 237, 213, 200);"
+        "  background: rgba(255, 237, 213, 100);"
         "  border: 1px solid rgba(251, 146, 60, 180);"
         "  border-radius: 8px;"
         "  padding: 6px 10px;"
@@ -492,7 +492,7 @@ def _atualizar_aviso_preview(dlg, retangulos):
         "}"
     )
     aviso.adjustSize()
-    aviso.move(12, 12)
+    aviso.move(275, 12)
     aviso.raise_()
     aviso.show()
     dlg._aviso_preview = aviso
