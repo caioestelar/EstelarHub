@@ -8,7 +8,7 @@ from qgis.PyQt.QtCore import QPoint, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QCursor, QImage, QPixmap
 
 
-_CURSOR_SIZE = QSize(40, 40)
+_CURSOR_SIZE = QSize(20, 20)
 _CURSOR_HOTSPOT = QPoint(1, 1)
 _BACKGROUND_CHANNEL_MIN = 232
 _BACKGROUND_CHANNEL_SPREAD_MAX = 30

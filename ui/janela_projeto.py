@@ -135,7 +135,7 @@ class MolduraMapa(QWidget):
     RAIO_CANTO = 16.0
     LARGURA_BORDA = 1.0
     COR_BORDA = QColor("#2b2a2a")
-    COR_CANTOS = QColor("#111112")
+    COR_CANTOS = QColor("#171719")
 
     def __init__(self, parent=None):
         super().__init__(parent)
