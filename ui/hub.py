@@ -2,8 +2,9 @@
 
 import os
 
-from qgis.PyQt.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, QTimer, QUrl
+from qgis.PyQt.QtCore import QEasingCurve, QEvent, QPoint, QPropertyAnimation, QRectF, QSize, Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QColor, QDesktopServices, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from qgis.PyQt.QtSvg import QSvgRenderer
 from qgis.PyQt.QtWidgets import (
     QApplication,
     QDialog,
@@ -164,10 +165,62 @@ class HubTitleBar(QFrame):
         super().mouseReleaseEvent(event)
 
 
+class HubArtwork(QWidget):
+    """Small, decorative SVG artwork loaded from the local plugin assets."""
+
+    def __init__(self, asset_name, size, parent=None):
+        super().__init__(parent)
+        asset_path = os.path.join(os.path.dirname(__file__), "assets", asset_name)
+        self.renderer = QSvgRenderer(asset_path, self)
+        self.setFixedSize(size)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setAccessibleName("")
+        self.setVisible(self.renderer.isValid())
+
+    def paintEvent(self, event):
+        if not self.renderer.isValid():
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.renderer.render(painter, QRectF(self.rect()))
+        painter.end()
+
+
+class HubMainScrollArea(QScrollArea):
+    """Scroll area that cancels programmatic motion when users take control."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.navigation_animation = None
+        self.viewport().installEventFilter(self)
+        self.verticalScrollBar().sliderPressed.connect(self.stop_navigation_animation)
+
+    def set_navigation_animation(self, animation):
+        self.stop_navigation_animation()
+        self.navigation_animation = animation
+
+    def stop_navigation_animation(self):
+        if self.navigation_animation is not None:
+            self.navigation_animation.stop()
+            self.navigation_animation.deleteLater()
+            self.navigation_animation = None
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Wheel:
+            self.stop_navigation_animation()
+        return super().eventFilter(watched, event)
+
+    def wheelEvent(self, event):
+        self.stop_navigation_animation()
+        super().wheelEvent(event)
+
+
 class HubToolCard(QFrame):
-    def __init__(self, module, favorite, launch, toggle_favorite, can_launch=True, parent=None):
+    def __init__(self, module, favorite, launch, toggle_favorite, can_launch=True, motion_enabled=True, parent=None):
         super().__init__(parent)
         self.module = module
+        self.motion_enabled = motion_enabled
         self.can_launch = bool(module.is_active and can_launch)
         self.setObjectName("hubToolCard")
         self.setProperty("moduleStatus", "active" if self.can_launch else "upcoming")
@@ -214,6 +267,21 @@ class HubToolCard(QFrame):
         self.favorite_button.setToolTip("Remover dos favoritos" if favorite else "Adicionar aos favoritos")
         self.favorite_button.setAccessibleName(self.favorite_button.toolTip())
         self.favorite_button.clicked.connect(lambda: toggle_favorite(module.id))
+
+        self.artwork = None
+        self._artwork_effect = None
+        self._artwork_animation = None
+        if module.id == "access-map":
+            self.artwork = HubArtwork("hub-access-route.svg", QSize(104, 68))
+            self.artwork.setObjectName("hubModuleArtwork")
+            self._artwork_effect = QGraphicsOpacityEffect(self.artwork)
+            self._artwork_effect.setOpacity(0.78)
+            self.artwork.setGraphicsEffect(self._artwork_effect)
+            self._artwork_animation = QPropertyAnimation(self._artwork_effect, b"opacity", self)
+            self._artwork_animation.setDuration(100)
+            self._artwork_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            top.addWidget(self.artwork, 0, Qt.AlignmentFlag.AlignVCenter)
+
         top.addWidget(self.favorite_button, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(top)
 
@@ -239,6 +307,22 @@ class HubToolCard(QFrame):
         footer.addWidget(self.launch_button)
         layout.addLayout(footer)
 
+    def enterEvent(self, event):
+        self._animate_artwork(0.96)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._animate_artwork(0.78)
+        super().leaveEvent(event)
+
+    def _animate_artwork(self, opacity):
+        if not self.motion_enabled or self._artwork_animation is None or self._artwork_effect is None:
+            return
+        self._artwork_animation.stop()
+        self._artwork_animation.setStartValue(self._artwork_effect.opacity())
+        self._artwork_animation.setEndValue(opacity)
+        self._artwork_animation.start()
+
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton and self.can_launch:
             self.launch_button.click()
@@ -262,6 +346,9 @@ class EstelarHubDialog(QDialog):
         self._filter = "all"
         self._cards = {}
         self._groups = {}
+        self._section_reveal_animations = {}
+        self._favorite_pulse_animations = {}
+        self._motion_enabled = not bool(self.settings.value("EstelarHub/reducedMotion", False, type=bool))
         self._favorite_ids = set(self.settings.value("EstelarHub/favorites", [], type=list))
         self._recent_projects = self._load_recent_projects()
         self._current_project_path = self.project_manager.current_path()
@@ -319,15 +406,16 @@ class EstelarHubDialog(QDialog):
         root.addWidget(workspace, 1)
         root.addWidget(self._build_footer())
 
-        effect = QGraphicsOpacityEffect(workspace)
-        effect.setOpacity(0.55)
-        workspace.setGraphicsEffect(effect)
-        self._entry_animation = QPropertyAnimation(effect, b"opacity", self)
-        self._entry_animation.setDuration(240)
-        self._entry_animation.setStartValue(0.55)
-        self._entry_animation.setEndValue(1.0)
-        self._entry_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        QTimer.singleShot(0, self._entry_animation.start)
+        if self._motion_enabled:
+            effect = QGraphicsOpacityEffect(workspace)
+            effect.setOpacity(0.55)
+            workspace.setGraphicsEffect(effect)
+            self._entry_animation = QPropertyAnimation(effect, b"opacity", self)
+            self._entry_animation.setDuration(240)
+            self._entry_animation.setStartValue(0.55)
+            self._entry_animation.setEndValue(1.0)
+            self._entry_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            QTimer.singleShot(0, self._entry_animation.start)
 
     def _build_header(self):
         header = HubTitleBar(self)
@@ -434,7 +522,7 @@ class EstelarHubDialog(QDialog):
         return sidebar
 
     def _build_main_content(self):
-        scroll = QScrollArea()
+        scroll = HubMainScrollArea()
         scroll.setObjectName("hubMainScroll")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -446,7 +534,8 @@ class EstelarHubDialog(QDialog):
         layout.setContentsMargins(25, 22, 25, 24)
         layout.setSpacing(18)
 
-        layout.addWidget(self._build_current_project_section())
+        self.current_project_section = self._build_current_project_section()
+        layout.addWidget(self.current_project_section)
 
         self.recent_section = self._build_recent_section()
         layout.addWidget(self.recent_section)
@@ -538,6 +627,13 @@ class EstelarHubDialog(QDialog):
         self.home_project_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         details.addWidget(self.home_project_path_label)
         row_layout.addLayout(details, 1)
+
+        self.project_artwork = HubArtwork("hub-project-contours.svg", QSize(104, 36))
+        self.project_artwork.setObjectName("hubProjectArtwork")
+        project_art_effect = QGraphicsOpacityEffect(self.project_artwork)
+        project_art_effect.setOpacity(0.78)
+        self.project_artwork.setGraphicsEffect(project_art_effect)
+        row_layout.addWidget(self.project_artwork, 0, Qt.AlignmentFlag.AlignVCenter)
 
         open_folder = QPushButton("Pasta do projeto")
         open_folder.setObjectName("hubSecondaryAction")
@@ -769,6 +865,7 @@ class EstelarHubDialog(QDialog):
                 self._launch_module,
                 self._toggle_favorite,
                 can_launch=self.registry.can_launch(module.id),
+                motion_enabled=self._motion_enabled,
             )
             self._cards[module.id] = card
             self._active_grid.addWidget(card, index, 0, 1, 2)
@@ -783,9 +880,18 @@ class EstelarHubDialog(QDialog):
             group_layout = QVBoxLayout(group)
             group_layout.setContentsMargins(0, 0, 0, 0)
             group_layout.setSpacing(3)
+            category_heading = QWidget()
+            category_heading_layout = QHBoxLayout(category_heading)
+            category_heading_layout.setContentsMargins(0, 0, 0, 0)
+            category_heading_layout.setSpacing(7)
             category_label = QLabel(category)
             category_label.setObjectName("hubUpcomingCategory")
-            group_layout.addWidget(category_label)
+            category_heading_layout.addWidget(category_label)
+            category_heading_layout.addStretch(1)
+            category_artwork = HubArtwork("hub-category-topography.svg", QSize(74, 22))
+            category_artwork.setObjectName("hubUpcomingCategoryArtwork")
+            category_heading_layout.addWidget(category_artwork)
+            group_layout.addWidget(category_heading)
             module_ids = []
 
             for module in category_modules:
@@ -862,9 +968,29 @@ class EstelarHubDialog(QDialog):
             favorite_button.setIcon(criar_icone_hub("star", "#3b82f6" if is_favorite else "#77777b", 17))
             favorite_button.setToolTip("Remover dos favoritos" if is_favorite else "Adicionar aos favoritos")
             favorite_button.setAccessibleName(favorite_button.toolTip())
+            self._pulse_favorite(module_id, favorite_button)
         self._render_favorites()
         if self._filter == "favorites":
             self._apply_filter()
+
+    def _pulse_favorite(self, module_id, button):
+        if not self._motion_enabled:
+            return
+        previous = self._favorite_pulse_animations.pop(module_id, None)
+        if previous is not None:
+            previous.stop()
+            previous.deleteLater()
+        effect = QGraphicsOpacityEffect(button)
+        effect.setOpacity(0.58)
+        button.setGraphicsEffect(effect)
+        animation = QPropertyAnimation(effect, b"opacity", self)
+        animation.setDuration(120)
+        animation.setStartValue(0.58)
+        animation.setEndValue(1.0)
+        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        animation.finished.connect(lambda key=module_id: self._favorite_pulse_animations.pop(key, None))
+        self._favorite_pulse_animations[module_id] = animation
+        animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def _apply_filter(self, *_args):
         query = self.search.text().strip().casefold()
@@ -893,6 +1019,44 @@ class EstelarHubDialog(QDialog):
         self.active_section.setVisible(visible_active > 0)
         self.upcoming_section.setVisible(visible_upcoming > 0)
 
+    def _animate_scroll_to(self, target_widget=None, value=0):
+        scrollbar = self.main_scroll.verticalScrollBar()
+        if target_widget is not None:
+            value = target_widget.mapTo(self._main_content, QPoint(0, 0)).y() - 20
+        value = max(scrollbar.minimum(), min(scrollbar.maximum(), value))
+        if not self._motion_enabled:
+            self.main_scroll.stop_navigation_animation()
+            scrollbar.setValue(value)
+            return
+        animation = QPropertyAnimation(scrollbar, b"value", self.main_scroll)
+        animation.setDuration(200)
+        animation.setStartValue(scrollbar.value())
+        animation.setEndValue(value)
+        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.main_scroll.set_navigation_animation(animation)
+        animation.start()
+
+    def _reveal_section(self, section):
+        if not self._motion_enabled or section is None or not section.isVisible():
+            return
+        previous = self._section_reveal_animations.pop(section, None)
+        if previous is not None:
+            previous.stop()
+            previous.deleteLater()
+        effect = section.graphicsEffect()
+        if not isinstance(effect, QGraphicsOpacityEffect):
+            effect = QGraphicsOpacityEffect(section)
+            section.setGraphicsEffect(effect)
+        effect.setOpacity(0.72)
+        animation = QPropertyAnimation(effect, b"opacity", self)
+        animation.setDuration(145)
+        animation.setStartValue(0.72)
+        animation.setEndValue(1.0)
+        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        animation.finished.connect(lambda key=section: self._section_reveal_animations.pop(key, None))
+        self._section_reveal_animations[section] = animation
+        animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+
     def _navigate(self, key):
         self._filter = "favorites" if key == "favorites" else "all"
         for nav_key, button in self._navigation.items():
@@ -900,14 +1064,18 @@ class EstelarHubDialog(QDialog):
         self._apply_filter()
 
         if key == "home":
-            self.main_scroll.verticalScrollBar().setValue(0)
+            self._reveal_section(self.current_project_section)
+            self._animate_scroll_to(value=0)
         elif key == "tools":
             target = self.active_section if self.active_section.isVisible() else self.upcoming_section
-            self.main_scroll.ensureWidgetVisible(target, 0, 20)
+            self._reveal_section(target)
+            self._animate_scroll_to(target)
         elif key == "favorites":
-            self.main_scroll.ensureWidgetVisible(self.favorites_section, 0, 20)
+            self._reveal_section(self.favorites_section)
+            self._animate_scroll_to(self.favorites_section)
         elif key == "recent":
-            self.main_scroll.ensureWidgetVisible(self.recent_section, 0, 20)
+            self._reveal_section(self.recent_section)
+            self._animate_scroll_to(self.recent_section)
 
     def _filter_category(self, category):
         self._filter = "all"
@@ -916,7 +1084,8 @@ class EstelarHubDialog(QDialog):
         self.search.setText(category)
         self._apply_filter()
         target = self.active_section if self.active_section.isVisible() else self.upcoming_section
-        self.main_scroll.ensureWidgetVisible(target, 0, 20)
+        self._reveal_section(target)
+        self._animate_scroll_to(target)
 
     def _launch_module(self, module_id):
         if not self.registry.can_launch(module_id):
@@ -1023,3 +1192,23 @@ class EstelarHubDialog(QDialog):
     def _open_folder(path):
         if path and os.path.isdir(path):
             QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
+    def _stop_animations(self):
+        self.main_scroll.stop_navigation_animation()
+        for animation in tuple(self._section_reveal_animations.values()):
+            animation.stop()
+        self._section_reveal_animations.clear()
+        for animation in tuple(self._favorite_pulse_animations.values()):
+            animation.stop()
+        self._favorite_pulse_animations.clear()
+        for card in self._cards.values():
+            if card._artwork_animation is not None:
+                card._artwork_animation.stop()
+
+    def done(self, result):
+        self._stop_animations()
+        super().done(result)
+
+    def closeEvent(self, event):
+        self._stop_animations()
+        super().closeEvent(event)

@@ -14,6 +14,7 @@ plugin.
 """
 
 from qgis.PyQt.QtCore import (
+    QEvent,
     QPropertyAnimation,
     QEasingCurve,
     QSequentialAnimationGroup,
@@ -596,33 +597,59 @@ class JanelaProjeto(QDialog):
         divisor.setFrameShadow(QFrame.Shadow.Plain)
         layout.addWidget(divisor)
 
-    def _construir_campos_obra(self, layout: QVBoxLayout) -> None:
-        cabecalho_painel = QHBoxLayout()
-        cabecalho_painel.setContentsMargins(0, 0, 0, 2)
-        titulo_painel = QLabel("CONFIGURAÇÃO")
-        titulo_painel.setObjectName("sidePanelHeading")
-        cabecalho_painel.addWidget(titulo_painel)
-        cabecalho_painel.addStretch()
-        rascunho = QLabel("Rascunho")
-        rascunho.setObjectName("statusPill")
-        cabecalho_painel.addWidget(rascunho)
-        layout.addLayout(cabecalho_painel)
+    def _criar_campo_suave(self, rotulo: str, controle: QWidget) -> QFrame:
+        campo = QFrame()
+        campo.setObjectName("softField")
+        campo.setProperty("focused", False)
+        campo_layout = QVBoxLayout(campo)
+        campo_layout.setContentsMargins(8, 4, 8, 3)
+        campo_layout.setSpacing(0)
 
-        grupo_projeto = QGroupBox("Dados do projeto")
-        grupo_layout = QGridLayout()
-        grupo_layout.setContentsMargins(2, 4, 2, 2)
+        label = QLabel(rotulo)
+        label.setObjectName("softFieldLabel")
+        label.setBuddy(controle)
+        if not controle.accessibleName():
+            controle.setAccessibleName(rotulo.replace(" *", ""))
+        campo.setFocusProxy(controle.focusProxy() or controle)
+        campo_layout.addWidget(label)
+        campo_layout.addWidget(controle)
+
+        fields = getattr(self, "_soft_fields_by_control", None)
+        if fields is None:
+            fields = self._soft_fields_by_control = {}
+        focus_targets = [controle]
+        focus_proxy = controle.focusProxy()
+        if focus_proxy is not None:
+            focus_targets.append(focus_proxy)
+        if isinstance(controle, QComboBox) and controle.isEditable():
+            line_edit = controle.lineEdit()
+            if line_edit is not None:
+                focus_targets.append(line_edit)
+        for target in focus_targets:
+            fields[target] = campo
+            target.installEventFilter(self)
+        return campo
+
+    def eventFilter(self, watched, event):
+        campo = getattr(self, "_soft_fields_by_control", {}).get(watched)
+        if campo is not None and event.type() in (
+            QEvent.Type.FocusIn,
+            QEvent.Type.FocusOut,
+        ):
+            campo.setProperty("focused", event.type() == QEvent.Type.FocusIn)
+            campo.style().unpolish(campo)
+            campo.style().polish(campo)
+            campo.update()
+        return super().eventFilter(watched, event)
+
+    def _construir_campos_obra(self, layout: QVBoxLayout) -> None:
+        grupo_projeto = QWidget()
+        grupo_layout = QGridLayout(grupo_projeto)
+        grupo_layout.setContentsMargins(0, 0, 0, 0)
         grupo_layout.setColumnStretch(0, 1)
         grupo_layout.setColumnMinimumWidth(0, 0)
         grupo_layout.setHorizontalSpacing(4)
-        grupo_layout.setVerticalSpacing(4)
-
-        self.lbl_obra = QLabel("Nome da obra *")
-        self.lbl_obra.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_obra, 0, 0)
-
-        self.lbl_preset = QLabel("Perfil rápido")
-        self.lbl_preset.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_preset, 2, 0)
+        grupo_layout.setVerticalSpacing(5)
 
         self.cmb_obra = QComboBox()
         self.cmb_obra.setEditable(True)
@@ -643,27 +670,16 @@ class JanelaProjeto(QDialog):
         for indice, (sigla, _nome) in enumerate(sorted(constants.OBRAS.items())):
             self.cmb_obra.setItemData(indice, sigla)
         self.cmb_obra.setCurrentIndex(-1)
-        grupo_layout.addWidget(self.cmb_obra, 1, 0)
 
         self.cmb_preset = QComboBox()
         self.cmb_preset.setAccessibleName("Perfil rápido")
         self.cmb_preset.addItems(list(self._presets.keys()))
         self.cmb_preset.currentTextChanged.connect(self._aplicar_preset)
         self._carregar_preset_salvo()
-        grupo_layout.addWidget(self.cmb_preset, 3, 0)
-
-        lbl_tipo = QLabel("Tipo de projeto")
-        lbl_tipo.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_tipo, 4, 0)
-
-        lbl_zona = QLabel("Zona UTM")
-        lbl_zona.setObjectName("fieldLabel")
-        grupo_layout.addWidget(lbl_zona, 6, 0)
 
         self.cmb_tipo = QComboBox()
         self.cmb_tipo.setAccessibleName("Tipo de projeto")
         self.cmb_tipo.addItems(constants.TIPOS_PROJETO)
-        grupo_layout.addWidget(self.cmb_tipo, 5, 0)
 
         self.cmb_zona = QComboBox()
         self.cmb_zona.setAccessibleName("Zona UTM")
@@ -671,7 +687,15 @@ class JanelaProjeto(QDialog):
         self.cmb_zona.setCurrentText(
             self._variaveis_salvas.get("zona_utm") or "AUTOMÁTICO"
         )
-        grupo_layout.addWidget(self.cmb_zona, 7, 0)
+
+        self.campo_obra = self._criar_campo_suave("Nome da obra *", self.cmb_obra)
+        self.campo_preset = self._criar_campo_suave("Perfil rápido", self.cmb_preset)
+        self.campo_tipo = self._criar_campo_suave("Tipo de projeto", self.cmb_tipo)
+        self.campo_zona = self._criar_campo_suave("Zona UTM", self.cmb_zona)
+        grupo_layout.addWidget(self.campo_obra, 0, 0)
+        grupo_layout.addWidget(self.campo_preset, 1, 0)
+        grupo_layout.addWidget(self.campo_tipo, 2, 0)
+        grupo_layout.addWidget(self.campo_zona, 3, 0)
 
         self.cmb_obra.currentIndexChanged.connect(self._atualizar_preview)
         self.cmb_obra.currentTextChanged.connect(self._atualizar_estado_botao)
@@ -684,35 +708,33 @@ class JanelaProjeto(QDialog):
         self.chk_modo_avancado = QCheckBox("Modo avançado")
         self.chk_modo_avancado.toggled.connect(self._alternar_modo_avancado)
         self.chk_modo_avancado.toggled.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.chk_modo_avancado, 8, 0)
-
-        self.lbl_sigla_projetista = QLabel("Sigla projetista")
-        self.lbl_sigla_projetista.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_sigla_projetista, 9, 0)
-
-        self.lbl_sigla_verificacao = QLabel("Sigla verificação")
-        self.lbl_sigla_verificacao.setObjectName("fieldLabel")
-        grupo_layout.addWidget(self.lbl_sigla_verificacao, 11, 0)
+        grupo_layout.addWidget(self.chk_modo_avancado, 4, 0)
 
         self.txt_sigla_projetista = QLineEdit()
         self.txt_sigla_projetista.setPlaceholderText("Ex.: CCC")
         self.txt_sigla_projetista.setAccessibleName("Sigla projetista")
         self.txt_sigla_projetista.textChanged.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.txt_sigla_projetista, 10, 0)
 
         self.txt_sigla_verificacao = QLineEdit()
         self.txt_sigla_verificacao.setPlaceholderText("Ex.: JRM")
         self.txt_sigla_verificacao.setAccessibleName("Sigla verificação")
         self.txt_sigla_verificacao.textChanged.connect(self._salvar_estado_formulario)
-        grupo_layout.addWidget(self.txt_sigla_verificacao, 12, 0)
+
+        self.campo_sigla_projetista = self._criar_campo_suave(
+            "Sigla projetista", self.txt_sigla_projetista
+        )
+        self.campo_sigla_verificacao = self._criar_campo_suave(
+            "Sigla verificação", self.txt_sigla_verificacao
+        )
+        grupo_layout.addWidget(self.campo_sigla_projetista, 5, 0)
+        grupo_layout.addWidget(self.campo_sigla_verificacao, 6, 0)
 
         self._alternar_modo_avancado(False)
-
-        grupo_projeto.setLayout(grupo_layout)
         layout.addWidget(grupo_projeto)
 
-        grupo_arquivo = QGroupBox("Arquivo de entrada *")
-        layout_arquivo = QVBoxLayout()
+        grupo_arquivo = QWidget()
+        layout_arquivo = QVBoxLayout(grupo_arquivo)
+        layout_arquivo.setContentsMargins(0, 0, 0, 0)
         layout_arquivo.setSpacing(6)
 
         self.btn_kml = QPushButton("Importar KML/KMZ")
@@ -727,18 +749,19 @@ class JanelaProjeto(QDialog):
         self.lbl_status.setObjectName("statusInfo")
         self.lbl_status.setWordWrap(True)
         layout_arquivo.addWidget(self.lbl_status)
-
-        grupo_arquivo.setLayout(layout_arquivo)
         layout.addWidget(grupo_arquivo)
 
-        grupo_destino = QGroupBox("Salvar projeto em *")
-        layout_destino = QVBoxLayout()
+        grupo_destino = QWidget()
+        layout_destino = QVBoxLayout(grupo_destino)
+        layout_destino.setContentsMargins(0, 0, 0, 0)
         layout_destino.setSpacing(6)
 
-        linha_destino = QHBoxLayout()
+        linha_destino_widget = QWidget()
+        linha_destino = QHBoxLayout(linha_destino_widget)
         linha_destino.setContentsMargins(0, 0, 0, 0)
         linha_destino.setSpacing(6)
         self.txt_pasta_projeto = QLineEdit()
+        linha_destino_widget.setFocusProxy(self.txt_pasta_projeto)
         self.txt_pasta_projeto.setPlaceholderText("Escolha a pasta de destino")
         self.txt_pasta_projeto.setAccessibleName("Pasta de destino do projeto")
         self.txt_pasta_projeto.setAccessibleDescription(
@@ -757,6 +780,7 @@ class JanelaProjeto(QDialog):
         self.btn_pasta_projeto.setToolTip("Selecionar pasta de destino")
         self.btn_pasta_projeto.clicked.connect(self._selecionar_pasta_projeto)
         linha_destino.addWidget(self.btn_pasta_projeto)
+        campo_destino = self._criar_campo_suave("Salvar projeto em *", linha_destino_widget)
 
         linha_acoes_destino = QGridLayout()
         linha_acoes_destino.setHorizontalSpacing(6)
@@ -793,7 +817,7 @@ class JanelaProjeto(QDialog):
 
         self.btn_copiar_caminho.setEnabled(bool(self.txt_pasta_projeto.text().strip()))
         self.btn_abrir_projeto.setEnabled(bool(self.ultimo_projeto_gerado and os.path.isfile(self.ultimo_projeto_gerado)))
-        layout_destino.addLayout(linha_destino)
+        layout_destino.addWidget(campo_destino)
         layout_destino.addLayout(linha_acoes_destino)
 
         dica_destino = QLabel(
@@ -802,16 +826,16 @@ class JanelaProjeto(QDialog):
         dica_destino.setObjectName("destinationHint")
         dica_destino.setWordWrap(True)
         layout_destino.addWidget(dica_destino)
-
-        grupo_destino.setLayout(layout_destino)
         layout.addWidget(grupo_destino)
 
         self._atualizar_status()
 
     def _construir_preview(self, layout: QVBoxLayout) -> None:
-        grupo_preview = QGroupBox("Preview do empreendimento")
-        grupo_layout = QVBoxLayout()
-        grupo_layout.setSpacing(8)
+        grupo_preview = QWidget()
+        grupo_preview.setObjectName("previewPanel")
+        grupo_layout = QVBoxLayout(grupo_preview)
+        grupo_layout.setContentsMargins(0, 0, 0, 0)
+        grupo_layout.setSpacing(0)
 
         self.canvas_preview = QgsMapCanvas()
         self.canvas_preview.setObjectName("mapCanvas")
@@ -855,7 +879,6 @@ class JanelaProjeto(QDialog):
         self.lbl_preview.setMaximumWidth(220)
         if not self.camada_base:
             self.lbl_preview.setText(
-                "PREVIEW DO EMPREENDIMENTO\n\n"
                 "Importe um KML/KMZ para carregar o empreendimento\n"
                 "e visualizar a área de estudo no mapa."
             )
@@ -891,26 +914,14 @@ class JanelaProjeto(QDialog):
         preview_overlay.lower()
         grupo_layout.addWidget(mapa_container, 1)
 
-        grupo_preview.setLayout(grupo_layout)
         layout.addWidget(grupo_preview, 1)
 
         panel_escala = QFrame()
         panel_escala.setObjectName("scalePanel")
-        panel_escala.setMinimumHeight(142)
+        panel_escala.setMinimumHeight(82)
         layout_escala = QVBoxLayout(panel_escala)
-        layout_escala.setContentsMargins(10, 7, 10, 8)
-        layout_escala.setSpacing(5)
-
-        cabecalho_escala = QHBoxLayout()
-        cabecalho_escala.setContentsMargins(2, 0, 2, 0)
-        titulo_escala = QLabel("EXTENSÕES DOS LAYOUTS")
-        titulo_escala.setObjectName("scaleBenchTitle")
-        cabecalho_escala.addWidget(titulo_escala)
-        cabecalho_escala.addStretch()
-        dica_escala = QLabel("Ajuste cada área diretamente pelo controle")
-        dica_escala.setObjectName("scaleBenchHint")
-        cabecalho_escala.addWidget(dica_escala)
-        layout_escala.addLayout(cabecalho_escala)
+        layout_escala.setContentsMargins(8, 6, 8, 6)
+        layout_escala.setSpacing(0)
 
         grade_escala = QGridLayout()
         grade_escala.setContentsMargins(0, 0, 0, 0)
@@ -1203,18 +1214,12 @@ class JanelaProjeto(QDialog):
         layout.addWidget(barra_acoes)
 
     def _alternar_modo_avancado(self, ativado: bool) -> None:
-        if hasattr(self, "lbl_sigla_projetista"):
-            self.lbl_sigla_projetista.setVisible(ativado)
-        if hasattr(self, "lbl_sigla_verificacao"):
-            self.lbl_sigla_verificacao.setVisible(ativado)
-        if hasattr(self, "txt_sigla_projetista"):
-            self.txt_sigla_projetista.setVisible(ativado)
-        if hasattr(self, "txt_sigla_verificacao"):
-            self.txt_sigla_verificacao.setVisible(ativado)
-        if hasattr(self, "cmb_preset"):
-            self.cmb_preset.setVisible(not ativado)
-        if hasattr(self, "lbl_preset"):
-            self.lbl_preset.setVisible(not ativado)
+        if hasattr(self, "campo_sigla_projetista"):
+            self.campo_sigla_projetista.setVisible(ativado)
+        if hasattr(self, "campo_sigla_verificacao"):
+            self.campo_sigla_verificacao.setVisible(ativado)
+        if hasattr(self, "campo_preset"):
+            self.campo_preset.setVisible(not ativado)
         if hasattr(self, "btn_ok"):
             self._atualizar_estado_botao()
 

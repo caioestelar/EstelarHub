@@ -120,14 +120,8 @@ def animar_zoom_brasil(dlg, duracao_ms: int = 1500) -> None:
 
 
 def montar_texto_preview(dados: dict) -> str:
-    """Monta o texto do label de preview a partir de um dicionário de
-    dados, em vez de editar o texto anterior por índice de linha (como
-    fazia a macro original — uma técnica frágil: bastava o texto inicial
-    mudar de formato para o índice `linhas[2]`/`linhas[3]` apontar para a
-    linha errada).
-    """
+    """Monta apenas os dados do empreendimento exibidos sobre o mapa."""
     return (
-        "PREVIEW DO EMPREENDIMENTO\n\n"
         f"Obra: {dados.get('obra', '-')}\n"
         f"Tipo: {dados.get('tipo', '-')}\n"
         f"Município: {dados.get('municipio', '-')}\n"
