@@ -986,7 +986,7 @@ class JanelaProjeto(QDialog):
         estilo_layout.setContentsMargins(6, 4, 6, 4)
         estilo_layout.setSpacing(5)
 
-        lbl_estilo = QLabel("Base")
+        lbl_estilo = QLabel("   🗺")
         lbl_estilo.setObjectName("mapStyleLabel")
         self.cmb_estilo_mapa = QComboBox()
         self.cmb_estilo_mapa.setMinimumWidth(110)

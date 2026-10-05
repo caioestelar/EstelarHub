@@ -280,7 +280,7 @@ URL_SATELITE = (
 )
 
 URL_SEM_CIDADES = (
-    "type=xyz&url=https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+    "type=xyz&url=http://:basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 )
 
 # -----------------------------------------------------------------------
