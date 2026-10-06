@@ -948,6 +948,7 @@ class JanelaProjeto(QDialog):
 
         self._preview_tool = core_preview.PreviewMoveTool(self.canvas_preview, self)
         self.canvas_preview.setMapTool(self._preview_tool)
+        core_preview.conectar_atualizacao_rotulos(self)
         self.canvas_preview.setCursor(self._cursor_estelar)
 
         try:

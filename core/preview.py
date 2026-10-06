@@ -264,9 +264,12 @@ class PreviewLabelPanSync(QObject):
             if ferramenta is not None:
                 ferramenta.set_pan_com_scroll(True, ponteiro_no_mapa)
             cursor = getattr(self.dlg, "_cursor_estelar_mover_mapa", None)
-            if cursor is not None and not self._cursor_override_ativo:
-                QApplication.setOverrideCursor(cursor)
-                self._cursor_override_ativo = True
+            if cursor is not None:
+                if self._cursor_override_ativo:
+                    QApplication.changeOverrideCursor(cursor)
+                else:
+                    QApplication.setOverrideCursor(cursor)
+                    self._cursor_override_ativo = True
             return
 
         if self._cursor_override_ativo:
@@ -313,7 +316,8 @@ class PreviewLabelPanSync(QObject):
         return False
 
 
-def _conectar_atualizacao_rotulos(dlg) -> None:
+def conectar_atualizacao_rotulos(dlg) -> None:
+    """Connect map extent updates and install the middle-button pan filter."""
     if getattr(dlg, "_preview_rotulos_conectados", False):
         return
 
@@ -499,7 +503,7 @@ def _pixel_do_mapa(canvas, ponto: QgsPointXY):
 def _adicionar_rotulo_preview(dlg, nome_layout: str, retangulo: QgsRectangle) -> None:
     canvas = dlg.canvas_preview
     ponto = QgsPointXY(retangulo.xMinimum(), retangulo.yMaximum())
-    _conectar_atualizacao_rotulos(dlg)
+    conectar_atualizacao_rotulos(dlg)
     try:
         pixel = _pixel_do_mapa(canvas, ponto)
     except Exception:
