@@ -228,7 +228,7 @@ class LuzAmbienteNeon(QWidget):
 
         pontos = [
             (largura * (0.15 + deslocamento * 0.22), altura * 0.20, (70, 113, 184)),
-            (largura * (0.85 - deslocamento * 0.18), altura * 0.78, (255, 140, 0)),
+            (largura * (0.85 - deslocamento * 0.18), altura * 0.78, (70, 113, 184)),
         ]
         for x, y, cor in pontos:
             raio = max(largura, altura) * 0.42

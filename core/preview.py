@@ -647,9 +647,9 @@ def desenhar_retangulos(dlg) -> None:
     proporcao = constants.PROPORCAO_RETANGULO
 
     configuracoes = [
-        ("rb_500", largura_001, "001", QColor(236, 0, 139, 180), "LAYOUT 1"),
-        ("rb_100", largura_002, "002", QColor(247, 145, 56, 180), "LAYOUT 2"),
-        ("rb_25", largura_003, "003", QColor(0, 196, 210, 170), "LAYOUT 3"),
+        ("rb_500", largura_001, "001", QColor(236, 0, 139, 180), "L:1"),
+        ("rb_100", largura_002, "002", QColor(247, 145, 56, 180), "L:2"),
+        ("rb_25", largura_003, "003", QColor(0, 196, 210, 170), "L:3"),
     ]
 
     retangulos_preview = []
