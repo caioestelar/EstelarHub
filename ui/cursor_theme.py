@@ -4,7 +4,7 @@
 from collections import deque
 import os
 
-from qgis.PyQt.QtCore import QPoint, QSize, Qt
+from qgis.PyQt.QtCore import QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QCursor, QImage, QPainter, QPen, QPixmap
 
 
@@ -13,11 +13,18 @@ _CURSOR_HOTSPOT = QPoint(1, 1)
 _MAP_CURSOR_SIZE = QSize(36, 36)
 _MAP_POINTER_SIZE = QSize(27, 27)
 _MAP_BADGE_POSITION = (23, 23, 12, 12)
+_PAN_CURSOR_SIZE = QSize(32, 32)
+_PAN_CURSOR_HOTSPOT = QPoint(16, 16)
+_PAN_CURSOR_DARK = QColor("#101214")
+_PAN_CURSOR_SURFACE = QColor("#1B2024")
+_PAN_CURSOR_LINE = QColor("#D9E7EB")
+_PAN_CURSOR_ACCENT = QColor("#F36A26")
 _BACKGROUND_CHANNEL_MIN = 232
 _BACKGROUND_CHANNEL_SPREAD_MAX = 30
 _CACHED_CURSOR = None
 _CACHED_CURSOR_IMAGE = None
 _CACHED_MAP_CURSORS = {}
+_CACHED_PAN_CURSOR = None
 
 
 def _is_connected_white_background(color: QColor) -> bool:
@@ -199,3 +206,83 @@ def cursor_estelar_mapa(arrastando: bool = False) -> QCursor:
         _CURSOR_HOTSPOT.y(),
     )
     return QCursor(_CACHED_MAP_CURSORS[estado])
+
+
+def cursor_estelar_mover_mapa() -> QCursor:
+    """Return a branded four-way move cursor for the canvas pan gesture."""
+    global _CACHED_PAN_CURSOR
+    if _CACHED_PAN_CURSOR is not None:
+        return QCursor(_CACHED_PAN_CURSOR)
+
+    pixmap = QPixmap(_PAN_CURSOR_SIZE)
+    pixmap.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(QPen(_PAN_CURSOR_DARK, 3.5))
+    painter.setBrush(_PAN_CURSOR_SURFACE)
+    painter.drawEllipse(2, 2, 28, 28)
+
+    painter.setPen(
+        QPen(
+            _PAN_CURSOR_DARK,
+            3.5,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.RoundCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
+    )
+    segmentos = (
+        ((16, 12), (16, 5)),
+        ((16, 5), (12.5, 8.5)),
+        ((16, 5), (19.5, 8.5)),
+        ((16, 20), (16, 27)),
+        ((16, 27), (12.5, 23.5)),
+        ((16, 27), (19.5, 23.5)),
+        ((12, 16), (5, 16)),
+        ((5, 16), (8.5, 12.5)),
+        ((5, 16), (8.5, 19.5)),
+        ((20, 16), (27, 16)),
+        ((27, 16), (23.5, 12.5)),
+        ((27, 16), (23.5, 19.5)),
+    )
+    for inicio, fim in segmentos:
+        painter.drawLine(QPointF(*inicio), QPointF(*fim))
+
+    painter.setPen(
+        QPen(
+            _PAN_CURSOR_LINE,
+            1.7,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.RoundCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
+    )
+    segmentos_interiores = (
+        ((16, 12), (16, 6)),
+        ((16, 6), (13.2, 8.8)),
+        ((16, 6), (18.8, 8.8)),
+        ((16, 20), (16, 26)),
+        ((16, 26), (13.2, 23.2)),
+        ((16, 26), (18.8, 23.2)),
+        ((12, 16), (6, 16)),
+        ((6, 16), (8.8, 13.2)),
+        ((6, 16), (8.8, 18.8)),
+        ((20, 16), (26, 16)),
+        ((26, 16), (23.2, 13.2)),
+        ((26, 16), (23.2, 18.8)),
+    )
+    for inicio, fim in segmentos_interiores:
+        painter.drawLine(QPointF(*inicio), QPointF(*fim))
+
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(_PAN_CURSOR_ACCENT)
+    painter.drawEllipse(15, 15, 3, 3)
+    painter.end()
+
+    _CACHED_PAN_CURSOR = QCursor(
+        pixmap,
+        _PAN_CURSOR_HOTSPOT.x(),
+        _PAN_CURSOR_HOTSPOT.y(),
+    )
+    return QCursor(_CACHED_PAN_CURSOR)

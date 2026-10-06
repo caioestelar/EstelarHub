@@ -14,7 +14,7 @@ widgets, o que facilita testar a lógica sem precisar instanciar toda a UI.
 
 from qgis.PyQt.QtCore import QElapsedTimer, QEvent, QObject, QPoint, QTimer, Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QLabel
+from qgis.PyQt.QtWidgets import QApplication, QLabel
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
@@ -250,6 +250,7 @@ class PreviewLabelPanSync(QObject):
         self.dlg = dlg
         self.pan_start = None
         self.label_positions = {}
+        self._cursor_override_ativo = False
 
     @staticmethod
     def _event_position(event):
@@ -259,14 +260,32 @@ class PreviewLabelPanSync(QObject):
 
     def _atualizar_cursor_pan(self, ativo: bool, ponteiro_no_mapa: bool = True) -> None:
         ferramenta = getattr(self.dlg, "_preview_tool", None)
+        if ativo:
+            if ferramenta is not None:
+                ferramenta.set_pan_com_scroll(True, ponteiro_no_mapa)
+            cursor = getattr(self.dlg, "_cursor_estelar_mover_mapa", None)
+            if cursor is not None and not self._cursor_override_ativo:
+                QApplication.setOverrideCursor(cursor)
+                self._cursor_override_ativo = True
+            return
+
+        if self._cursor_override_ativo:
+            QApplication.restoreOverrideCursor()
+            self._cursor_override_ativo = False
         if ferramenta is not None:
-            ferramenta.set_pan_com_scroll(ativo, ponteiro_no_mapa)
+            ferramenta.set_pan_com_scroll(False, ponteiro_no_mapa)
+
+    def _reaplicar_cursor_pan(self, ponteiro_no_mapa: bool = True) -> None:
+        self._atualizar_cursor_pan(self.pan_start is not None, ponteiro_no_mapa)
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.MiddleButton:
+        if watched is self.dlg and event.type() == QEvent.Type.Close:
+            self.pan_start = None
+            self._atualizar_cursor_pan(False, False)
+        elif event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.MiddleButton:
             self.pan_start = self._event_position(event)
             self._atualizar_cursor_pan(True)
-            QTimer.singleShot(0, lambda: self._atualizar_cursor_pan(True))
+            QTimer.singleShot(0, self._reaplicar_cursor_pan)
             self.label_positions = {
                 nome: label.pos()
                 for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items()
@@ -277,6 +296,7 @@ class PreviewLabelPanSync(QObject):
             and event.buttons() & Qt.MouseButton.MiddleButton
         ):
             self._atualizar_cursor_pan(True)
+            QTimer.singleShot(0, self._reaplicar_cursor_pan)
             deslocamento = self._event_position(event) - self.pan_start
             for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items():
                 posicao_inicial = self.label_positions.get(nome)
@@ -285,10 +305,9 @@ class PreviewLabelPanSync(QObject):
         elif event.type() == QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.MiddleButton:
             ponteiro_no_mapa = watched.rect().contains(self._event_position(event))
             self.pan_start = None
-            self._atualizar_cursor_pan(False, ponteiro_no_mapa)
             QTimer.singleShot(
                 0,
-                lambda: self._atualizar_cursor_pan(False, ponteiro_no_mapa),
+                lambda: self._reaplicar_cursor_pan(ponteiro_no_mapa),
             )
             QTimer.singleShot(0, lambda: _reposicionar_rotulos_preview(self.dlg))
         return False
@@ -309,6 +328,7 @@ def _conectar_atualizacao_rotulos(dlg) -> None:
         )
     sincronizador = PreviewLabelPanSync(dlg, canvas.viewport())
     canvas.viewport().installEventFilter(sincronizador)
+    dlg.installEventFilter(sincronizador)
     dlg._preview_label_pan_sync = sincronizador
     dlg._preview_rotulos_conectados = True
 
@@ -336,23 +356,42 @@ class PreviewMoveTool(QgsMapToolIdentify):
         self._centros_originais = {}
 
     def setCursor(self, cursor):
-        cursores_mapa = {
-            Qt.CursorShape.ArrowCursor: "_cursor_estelar",
-            Qt.CursorShape.OpenHandCursor: "_cursor_estelar_mapa_livre",
-            Qt.CursorShape.ClosedHandCursor: "_cursor_estelar_mapa_arrastando",
-        }
-        atributo_cursor = cursores_mapa.get(cursor)
-        if atributo_cursor is not None:
-            cursor = getattr(self.dlg, atributo_cursor, cursor)
+        if self._pan_com_scroll:
+            cursor = getattr(
+                self.dlg,
+                "_cursor_estelar_mover_mapa",
+                getattr(self.dlg, "_cursor_estelar", cursor),
+            )
+        else:
+            cursores_mapa = {
+                Qt.CursorShape.ArrowCursor: "_cursor_estelar",
+                Qt.CursorShape.OpenHandCursor: "_cursor_estelar_mapa_livre",
+                Qt.CursorShape.ClosedHandCursor: "_cursor_estelar_mapa_arrastando",
+            }
+            atributo_cursor = cursores_mapa.get(cursor)
+            if atributo_cursor is not None:
+                cursor = getattr(self.dlg, atributo_cursor, cursor)
+        self._aplicar_cursor(cursor)
+
+    def _aplicar_cursor(self, cursor) -> None:
         try:
-            self.canvas().setCursor(cursor)
+            canvas = self.canvas()
+            canvas.setCursor(cursor)
+            canvas.viewport().setCursor(cursor)
         except Exception:
             pass
 
     def set_pan_com_scroll(self, ativo: bool, ponteiro_no_mapa: bool = True) -> None:
         """Sincroniza o cursor com o pan do canvas pelo botão central."""
         self._pan_com_scroll = bool(ativo)
-        if self._pan_com_scroll or self._arrastando:
+        if self._pan_com_scroll:
+            cursor = getattr(
+                self.dlg,
+                "_cursor_estelar_mover_mapa",
+                getattr(self.dlg, "_cursor_estelar", Qt.CursorShape.ArrowCursor),
+            )
+            self._aplicar_cursor(cursor)
+        elif self._arrastando:
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
         elif ponteiro_no_mapa:
             self.setCursor(Qt.CursorShape.OpenHandCursor)

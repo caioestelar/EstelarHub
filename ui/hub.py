@@ -126,6 +126,10 @@ def criar_icone_hub(nome: str, cor: str = "#3b82f6", tamanho: int = 24) -> QIcon
         painter.drawLine(16, 16, 22, 19)
     elif nome == "folder":
         painter.drawPath(_caminho_icone([(4, 8), (13, 8), (16, 11), (28, 11), (28, 25), (4, 25), (4, 8)]))
+    elif nome == "refresh":
+        painter.drawArc(6, 6, 20, 20, 45 * 16, 295 * 16)
+        painter.drawLine(22, 5, 27, 6)
+        painter.drawLine(27, 6, 26, 11)
     elif nome == "minus":
         painter.drawLine(7, 16, 25, 16)
     elif nome == "close":
@@ -134,6 +138,31 @@ def criar_icone_hub(nome: str, cor: str = "#3b82f6", tamanho: int = 24) -> QIcon
 
     painter.end()
     return QIcon(pixmap)
+
+
+def _recarregar_plugin_qgis(nome_pacote):
+    """Recarrega o plugin pelo QGIS e reabre o Hub após a inicialização."""
+    try:
+        from qgis import utils as qgis_utils
+
+        if not qgis_utils.reloadPlugin(nome_pacote):
+            QMessageBox.warning(
+                QApplication.activeWindow(),
+                "Não foi possível recarregar",
+                "O QGIS não conseguiu recarregar o EstelarMapTools. "
+                "Verifique se o plugin está ativo no gerenciador de plugins.",
+            )
+            return
+
+        plugin = qgis_utils.plugins.get(nome_pacote)
+        if plugin is not None:
+            QTimer.singleShot(120, plugin.run)
+    except Exception as error:
+        QMessageBox.critical(
+            QApplication.activeWindow(),
+            "Falha ao recarregar o EstelarMapTools",
+            str(error),
+        )
 
 
 class HubTitleBar(QFrame):
@@ -461,6 +490,27 @@ class EstelarHubDialog(QDialog):
         status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         header_layout.addWidget(status)
         self.header_project_label = status
+
+        reload_button = QToolButton()
+        reload_button.setObjectName("btnReload")
+        reload_button.setIcon(criar_icone_hub("refresh", "#c8c8ca", 16))
+        reload_button.setIconSize(QSize(16, 16))
+        try:
+            from qgis import utils as qgis_utils
+
+            plugin_ativo = __package__.split(".", 1)[0] in qgis_utils.active_plugins
+        except (ImportError, AttributeError):
+            plugin_ativo = False
+        reload_button.setEnabled(plugin_ativo)
+        reload_button.setToolTip(
+            "Recarregar o plugin e reabrir o Hub"
+            if plugin_ativo
+            else "Disponível quando o Estelar Hub estiver carregado como plugin do QGIS"
+        )
+        reload_button.setAccessibleName("Recarregar o plugin")
+        reload_button.clicked.connect(self._confirm_plugin_reload)
+        header_layout.addWidget(reload_button)
+        self.reload_button = reload_button
 
         minimize = QToolButton()
         minimize.setObjectName("btnMinimize")
@@ -1146,6 +1196,26 @@ class EstelarHubDialog(QDialog):
             QMessageBox.warning(self, "Não foi possível abrir o projeto", str(error))
             return
         self._refresh_project_context()
+
+    def _confirm_plugin_reload(self):
+        resposta = QMessageBox.question(
+            self,
+            "Recarregar EstelarMapTools",
+            "O Hub será fechado e reaberto para aplicar as alterações. "
+            "O QGIS e o projeto atual permanecerão abertos. Continuar?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if resposta != QMessageBox.StandardButton.Yes:
+            return
+
+        self.reload_button.setEnabled(False)
+        nome_pacote = __package__.split(".", 1)[0]
+        self.close()
+        QTimer.singleShot(
+            100,
+            lambda package_name=nome_pacote: _recarregar_plugin_qgis(package_name),
+        )
 
     def _check_updates(self):
         if self.update_service is None:

@@ -79,7 +79,8 @@ QScrollBar::sub-line:vertical {
 }
 
 #btnMinimize,
-#btnClose {
+#btnClose,
+#btnReload {
     min-width: 30px;
     max-width: 30px;
     min-height: 30px;
@@ -91,9 +92,15 @@ QScrollBar::sub-line:vertical {
     border-radius: 8px;
 }
 
-#btnMinimize:hover {
+#btnMinimize:hover,
+#btnReload:hover {
     background-color: #252529;
     border-color: #3a3a3e;
+}
+
+#btnReload:hover {
+    color: #e9f1ff;
+    border-color: #3b82f6;
 }
 
 #btnClose:hover {
