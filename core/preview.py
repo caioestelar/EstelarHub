@@ -606,7 +606,7 @@ def _atualizar_aviso_preview(dlg, retangulos):
         "}"
     )
     aviso.adjustSize()
-    aviso.move(275, 12)
+    aviso.move(290, 12)
     aviso.raise_()
     aviso.show()
     dlg._aviso_preview = aviso

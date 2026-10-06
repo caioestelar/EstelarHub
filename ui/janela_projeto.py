@@ -13,6 +13,8 @@ princípio de separação de responsabilidades pedido na reestruturação do
 plugin.
 """
 
+import os
+
 from qgis.PyQt.QtCore import (
     QEvent,
     QRectF,
@@ -63,7 +65,6 @@ from .cursor_theme import (
     cursor_estelar_transicao_pan,
 )
 from .surface_effects import aplicar_sombra_superficie
-import os
 
 
 def criar_icone_estelar(nome: str, cor: str = "#3b82f6") -> QIcon:
@@ -197,6 +198,9 @@ class LuzAmbienteNeon(QWidget):
             self._timer.start()
         else:
             self._timer.stop()
+
+    def pause_animation(self) -> None:
+        self._timer.stop()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -572,25 +576,22 @@ class JanelaProjeto(QDialog):
         if self._motion_enabled:
             QTimer.singleShot(0, lambda: self._ui_animations.fade_window(self))
 
-    def hideEvent(self, event):
+    def _parar_animacoes(self) -> None:
         self._ui_animations.stop_all()
         luz = getattr(self, "_luz_ambiente", None)
         if luz is not None:
-            luz._timer.stop()
+            luz.pause_animation()
+
+    def hideEvent(self, event):
+        self._parar_animacoes()
         super().hideEvent(event)
 
     def done(self, result):
-        self._ui_animations.stop_all()
-        luz = getattr(self, "_luz_ambiente", None)
-        if luz is not None:
-            luz._timer.stop()
+        self._parar_animacoes()
         super().done(result)
 
     def closeEvent(self, event):
-        self._ui_animations.stop_all()
-        luz = getattr(self, "_luz_ambiente", None)
-        if luz is not None:
-            luz._timer.stop()
+        self._parar_animacoes()
         super().closeEvent(event)
 
 
@@ -1458,9 +1459,10 @@ class JanelaProjeto(QDialog):
         )
 
         if botao_liberado:
-            self.lbl_status.setText(f"Pronto para gerar: {helpers.nome_do_arquivo(self.arquivo)}")
+            mensagem_status = f"Pronto para gerar: {helpers.nome_do_arquivo(self.arquivo)}"
         else:
-            self.lbl_status.setText("Para liberar a geração: " + "; ".join(pendencias) + ".")
+            mensagem_status = "Para liberar a geração: " + "; ".join(pendencias) + "."
+        self._ui_animations.change_text(self.lbl_status, mensagem_status, duration_ms=140)
 
         self._atualizar_painel_validacao(
             obra_ok=projeto_ok,
@@ -1616,7 +1618,7 @@ class JanelaProjeto(QDialog):
                 else "Nenhum arquivo importado"
             )
 
-        self.lbl_status.setText(mensagem)
+        self._ui_animations.change_text(self.lbl_status, mensagem, duration_ms=140)
 
     def _construir_rodape(self, layout: QVBoxLayout) -> None:
         linha_rodape = QHBoxLayout()
@@ -1639,7 +1641,20 @@ class JanelaProjeto(QDialog):
     # Eventos / delegação para o pacote core
     # ------------------------------------------------------------------
     def _atualizar_preview(self) -> None:
+        texto_anterior = getattr(self, "lbl_preview", None)
+        texto_anterior = texto_anterior.text() if texto_anterior is not None else None
         core_preview.atualizar_preview(self)
+        if (
+            texto_anterior is not None
+            and self._motion_enabled
+            and texto_anterior != self.lbl_preview.text()
+        ):
+            self._ui_animations.fade(
+                self.lbl_preview,
+                target_opacity=1.0,
+                duration_ms=140,
+                start_opacity=0.62,
+            )
 
     def _normalizar_ordem_layouts(self) -> None:
         if not hasattr(self, "spin_001") or not hasattr(self, "spin_002") or not hasattr(self, "spin_003"):

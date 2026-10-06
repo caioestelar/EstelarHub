@@ -111,6 +111,21 @@ class AnimacoesUI(QObject):
             return not pending[1]
         return not widget.isHidden()
 
+    def change_text(self, label, text, duration_ms: int = 150) -> bool:
+        """Update a label and softly reveal the new value only when it changed."""
+        text = str(text)
+        if label.text() == text:
+            return False
+        label.setText(text)
+        if self.enabled and label.isVisible():
+            self.fade(
+                label,
+                target_opacity=1.0,
+                duration_ms=duration_ms,
+                start_opacity=0.55,
+            )
+        return True
+
     def set_visible(
         self,
         widget: QWidget,
@@ -122,7 +137,15 @@ class AnimacoesUI(QObject):
             return
         visible = bool(visible)
         if not self.enabled or not widget.window().isVisible():
-            self.fade(widget, 1.0, duration_ms=0)
+            animation = self._animations.pop(widget, None)
+            if animation is not None:
+                animation.stop()
+                animation.deleteLater()
+            self._final_states.pop(widget, None)
+            effect = widget.graphicsEffect()
+            if effect is not None and self._effects.get(widget) is effect:
+                widget.setGraphicsEffect(None)
+                self._effects.pop(widget, None)
             widget.setVisible(visible)
             return
 

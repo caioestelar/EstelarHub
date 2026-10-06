@@ -445,18 +445,6 @@ class EstelarHubDialog(QDialog):
         root.addWidget(workspace, 1)
         root.addWidget(self._build_footer())
 
-        self._workspace = workspace
-        if self._motion_enabled:
-            QTimer.singleShot(
-                0,
-                lambda target=workspace: self._ui_animations.fade(
-                    target,
-                    target_opacity=1.0,
-                    duration_ms=240,
-                    start_opacity=0.55,
-                ),
-            )
-
     def _build_header(self):
         header = HubTitleBar(self)
         header.setObjectName("hubHeader")
@@ -1071,14 +1059,14 @@ class EstelarHubDialog(QDialog):
                     visible_active += 1
             else:
                 row = self._upcoming_rows.get(module.id)
-                if row is not None and self._ui_animations.will_be_visible(row) != visible:
-                    self._ui_animations.set_visible(row, visible, duration_ms=130)
+                if row is not None and row.isHidden() != (not visible):
+                    row.setVisible(visible)
                 if visible:
                     visible_upcoming += 1
 
         for group, module_ids in self._upcoming_groups:
             group_visible = any(
-                self._ui_animations.will_be_visible(self._upcoming_rows[module_id])
+                not self._upcoming_rows[module_id].isHidden()
                 for module_id in module_ids
             )
             if group.isHidden() != (not group_visible):
@@ -1121,7 +1109,16 @@ class EstelarHubDialog(QDialog):
     def _navigate(self, key):
         self._filter = "favorites" if key == "favorites" else "all"
         for nav_key, button in self._navigation.items():
-            button.setChecked(nav_key == key)
+            checked = nav_key == key
+            if button.isChecked() != checked:
+                button.setChecked(checked)
+                if self._motion_enabled:
+                    self._ui_animations.fade(
+                        button,
+                        target_opacity=1.0,
+                        duration_ms=120,
+                        start_opacity=0.7,
+                    )
         self._apply_filter()
 
         if key == "home":
@@ -1141,7 +1138,16 @@ class EstelarHubDialog(QDialog):
     def _filter_category(self, category):
         self._filter = "all"
         for nav_key, button in self._navigation.items():
-            button.setChecked(nav_key == "tools")
+            checked = nav_key == "tools"
+            if button.isChecked() != checked:
+                button.setChecked(checked)
+                if self._motion_enabled:
+                    self._ui_animations.fade(
+                        button,
+                        target_opacity=1.0,
+                        duration_ms=120,
+                        start_opacity=0.7,
+                    )
         self.search.setText(category)
         self._apply_filter()
         target = self.active_section if self.active_section.isVisible() else self.upcoming_section
@@ -1179,13 +1185,13 @@ class EstelarHubDialog(QDialog):
         self._current_project_path = self.project_manager.current_path()
         self._remember_project(self._current_project_path)
         project_name = os.path.basename(self._current_project_path) if self._current_project_path else "Projeto não salvo"
-        self.header_project_label.setText(project_name)
+        self._ui_animations.change_text(self.header_project_label, project_name)
         self.header_project_label.setToolTip(self._current_project_path or "O projeto atual do QGIS ainda não foi salvo")
-        self.project_name_label.setText(project_name)
+        self._ui_animations.change_text(self.project_name_label, project_name)
         project_detail = self._current_project_path or "Salve o projeto no QGIS para registrá-lo nos recentes."
-        self.project_detail_label.setText(project_detail)
-        self.home_project_name_label.setText(project_name)
-        self.home_project_path_label.setText(project_detail)
+        self._ui_animations.change_text(self.project_detail_label, project_detail)
+        self._ui_animations.change_text(self.home_project_name_label, project_name)
+        self._ui_animations.change_text(self.home_project_path_label, project_detail)
         self.open_folder_button.setEnabled(
             bool(self._current_project_path and os.path.isfile(self._current_project_path))
         )
