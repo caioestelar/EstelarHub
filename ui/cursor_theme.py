@@ -8,7 +8,7 @@ from qgis.PyQt.QtCore import QPoint, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QCursor, QImage, QPainter, QPainterPath, QPen, QPixmap
 
 
-_CURSOR_SIZE = QSize(20, 20)
+_CURSOR_SIZE = QSize(15, 15)
 _CURSOR_HOTSPOT = QPoint(1, 1)
 _MAP_CURSOR_SIZE = QSize(36, 36)
 _MAP_POINTER_SIZE = QSize(27, 27)

@@ -27,6 +27,7 @@ from ..core.module_registry import ModuleRegistry
 from ..estelar_hub.services.project_manager import ProjectManager
 from ..estelar_hub.services.settings import SettingsService
 from ..estelar_hub.module_context import ModuleContext
+from .animations import AnimacoesUI, movimento_habilitado
 from .cursor_theme import cursor_estelar
 from .surface_effects import aplicar_sombra_superficie
 
@@ -380,9 +381,12 @@ class EstelarHubDialog(QDialog):
         self._filter = "all"
         self._cards = {}
         self._groups = {}
-        self._section_reveal_animations = {}
-        self._favorite_pulse_animations = {}
-        self._motion_enabled = not bool(self.settings.value("EstelarHub/reducedMotion", False, type=bool))
+        self._motion_enabled = movimento_habilitado(self.settings)
+        self._ui_animations = AnimacoesUI(self, enabled=self._motion_enabled)
+        self._search_filter_timer = QTimer(self)
+        self._search_filter_timer.setSingleShot(True)
+        self._search_filter_timer.setInterval(90)
+        self._search_filter_timer.timeout.connect(self._apply_filter)
         self._favorite_ids = set(self.settings.value("EstelarHub/favorites", [], type=list))
         self._recent_projects = self._load_recent_projects()
         self._current_project_path = self.project_manager.current_path()
@@ -441,16 +445,17 @@ class EstelarHubDialog(QDialog):
         root.addWidget(workspace, 1)
         root.addWidget(self._build_footer())
 
+        self._workspace = workspace
         if self._motion_enabled:
-            effect = QGraphicsOpacityEffect(workspace)
-            effect.setOpacity(0.55)
-            workspace.setGraphicsEffect(effect)
-            self._entry_animation = QPropertyAnimation(effect, b"opacity", self)
-            self._entry_animation.setDuration(240)
-            self._entry_animation.setStartValue(0.55)
-            self._entry_animation.setEndValue(1.0)
-            self._entry_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-            QTimer.singleShot(0, self._entry_animation.start)
+            QTimer.singleShot(
+                0,
+                lambda target=workspace: self._ui_animations.fade(
+                    target,
+                    target_opacity=1.0,
+                    duration_ms=240,
+                    start_opacity=0.55,
+                ),
+            )
 
     def _build_header(self):
         header = HubTitleBar(self)
@@ -619,7 +624,7 @@ class EstelarHubDialog(QDialog):
         self.search.setToolTip("Filtra ferramentas disponíveis e em preparação; projetos recentes não são pesquisados.")
         self.search.setClearButtonEnabled(True)
         self.search.addAction(criar_icone_hub("search", "#858589", 18), QLineEdit.ActionPosition.LeadingPosition)
-        self.search.textChanged.connect(self._apply_filter)
+        self.search.textChanged.connect(self._schedule_filter)
         layout.addWidget(self.search)
 
         self.active_section, self._active_grid = self._build_tool_section(
@@ -1032,26 +1037,24 @@ class EstelarHubDialog(QDialog):
         if self._filter == "favorites":
             self._apply_filter()
 
-    def _pulse_favorite(self, module_id, button):
+    def _pulse_favorite(self, _module_id, button):
         if not self._motion_enabled:
             return
-        previous = self._favorite_pulse_animations.pop(module_id, None)
-        if previous is not None:
-            previous.stop()
-            previous.deleteLater()
-        effect = QGraphicsOpacityEffect(button)
-        effect.setOpacity(0.58)
-        button.setGraphicsEffect(effect)
-        animation = QPropertyAnimation(effect, b"opacity", self)
-        animation.setDuration(120)
-        animation.setStartValue(0.58)
-        animation.setEndValue(1.0)
-        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        animation.finished.connect(lambda key=module_id: self._favorite_pulse_animations.pop(key, None))
-        self._favorite_pulse_animations[module_id] = animation
-        animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._ui_animations.fade(
+            button,
+            target_opacity=1.0,
+            duration_ms=130,
+            start_opacity=0.58,
+        )
+
+    def _schedule_filter(self, *_args):
+        if not self._motion_enabled or not self.isVisible():
+            self._apply_filter()
+            return
+        self._search_filter_timer.start()
 
     def _apply_filter(self, *_args):
+        self._search_filter_timer.stop()
         query = self.search.text().strip().casefold()
         visible_active = 0
         visible_upcoming = 0
@@ -1062,21 +1065,31 @@ class EstelarHubDialog(QDialog):
             visible = matches_search and matches_filter
             if self.registry.can_launch(module.id):
                 card = self._cards.get(module.id)
-                if card is not None:
+                if card is not None and card.isHidden() != (not visible):
                     card.setVisible(visible)
                 if visible:
                     visible_active += 1
             else:
                 row = self._upcoming_rows.get(module.id)
-                if row is not None:
-                    row.setVisible(visible)
+                if row is not None and self._ui_animations.will_be_visible(row) != visible:
+                    self._ui_animations.set_visible(row, visible, duration_ms=130)
                 if visible:
                     visible_upcoming += 1
 
         for group, module_ids in self._upcoming_groups:
-            group.setVisible(any(not self._upcoming_rows[module_id].isHidden() for module_id in module_ids))
-        self.active_section.setVisible(visible_active > 0)
-        self.upcoming_section.setVisible(visible_upcoming > 0)
+            group_visible = any(
+                self._ui_animations.will_be_visible(self._upcoming_rows[module_id])
+                for module_id in module_ids
+            )
+            if group.isHidden() != (not group_visible):
+                group.setVisible(group_visible)
+
+        for section, visible in (
+            (self.active_section, visible_active > 0),
+            (self.upcoming_section, visible_upcoming > 0),
+        ):
+            if self._ui_animations.will_be_visible(section) != visible:
+                self._ui_animations.set_visible(section, visible, duration_ms=150)
 
     def _animate_scroll_to(self, target_widget=None, value=0):
         scrollbar = self.main_scroll.verticalScrollBar()
@@ -1098,23 +1111,12 @@ class EstelarHubDialog(QDialog):
     def _reveal_section(self, section):
         if not self._motion_enabled or section is None or not section.isVisible():
             return
-        previous = self._section_reveal_animations.pop(section, None)
-        if previous is not None:
-            previous.stop()
-            previous.deleteLater()
-        effect = section.graphicsEffect()
-        if not isinstance(effect, QGraphicsOpacityEffect):
-            effect = QGraphicsOpacityEffect(section)
-            section.setGraphicsEffect(effect)
-        effect.setOpacity(0.72)
-        animation = QPropertyAnimation(effect, b"opacity", self)
-        animation.setDuration(145)
-        animation.setStartValue(0.72)
-        animation.setEndValue(1.0)
-        animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        animation.finished.connect(lambda key=section: self._section_reveal_animations.pop(key, None))
-        self._section_reveal_animations[section] = animation
-        animation.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._ui_animations.fade(
+            section,
+            target_opacity=1.0,
+            duration_ms=145,
+            start_opacity=0.72,
+        )
 
     def _navigate(self, key):
         self._filter = "favorites" if key == "favorites" else "all"
@@ -1274,15 +1276,20 @@ class EstelarHubDialog(QDialog):
 
     def _stop_animations(self):
         self.main_scroll.stop_navigation_animation()
-        for animation in tuple(self._section_reveal_animations.values()):
-            animation.stop()
-        self._section_reveal_animations.clear()
-        for animation in tuple(self._favorite_pulse_animations.values()):
-            animation.stop()
-        self._favorite_pulse_animations.clear()
+        self._search_filter_timer.stop()
+        self._ui_animations.stop_all()
         for card in self._cards.values():
             if card._artwork_animation is not None:
                 card._artwork_animation.stop()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._motion_enabled:
+            QTimer.singleShot(0, lambda: self._ui_animations.fade_window(self))
+
+    def hideEvent(self, event):
+        self._stop_animations()
+        super().hideEvent(event)
 
     def done(self, result):
         self._stop_animations()

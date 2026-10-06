@@ -16,16 +16,12 @@ plugin.
 from qgis.PyQt.QtCore import (
     QEvent,
     QRectF,
-    QPropertyAnimation,
-    QEasingCurve,
-    QSequentialAnimationGroup,
     QSettings,
     QSize,
     QTimer,
     Qt,
 )
 from qgis.PyQt.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, QRadialGradient
-from qgis.PyQt.QtWidgets import QGraphicsOpacityEffect
 from qgis.PyQt.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -59,6 +55,7 @@ from ..core import preview as core_preview
 from ..core import projeto as core_projeto
 from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
+from .animations import AnimacoesUI, movimento_habilitado
 from .cursor_theme import (
     cursor_estelar,
     cursor_estelar_mapa,
@@ -189,10 +186,26 @@ class LuzAmbienteNeon(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self._fase = 0.0
+        self._animation_enabled = False
         self._timer = QTimer(self)
         self._timer.setInterval(45)
         self._timer.timeout.connect(self._avancar)
-        self._timer.start()
+
+    def set_animation_enabled(self, enabled: bool) -> None:
+        self._animation_enabled = bool(enabled)
+        if self._animation_enabled and self.isVisible():
+            self._timer.start()
+        else:
+            self._timer.stop()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._animation_enabled:
+            self._timer.start()
+
+    def hideEvent(self, event):
+        self._timer.stop()
+        super().hideEvent(event)
 
     def _avancar(self):
         self._fase = (self._fase + 0.004) % 10.0
@@ -272,26 +285,8 @@ class JanelaProjeto(QDialog):
         self._luz_ambiente = LuzAmbienteNeon(self)
         self._luz_ambiente.setGeometry(self.rect())
         self._luz_ambiente.lower()
-
-        efeito_botao = QGraphicsOpacityEffect(self.btn_ok)
-        self.btn_ok.setGraphicsEffect(efeito_botao)
-        entrada = QPropertyAnimation(efeito_botao, b"opacity", self)
-        entrada.setDuration(1100)
-        entrada.setStartValue(0.82)
-        entrada.setEndValue(1.0)
-        entrada.setEasingCurve(QEasingCurve.Type.InOutSine)
-
-        saida = QPropertyAnimation(efeito_botao, b"opacity", self)
-        saida.setDuration(1100)
-        saida.setStartValue(1.0)
-        saida.setEndValue(0.82)
-        saida.setEasingCurve(QEasingCurve.Type.InOutSine)
-
-        self._animacao_pulso = QSequentialAnimationGroup(self)
-        self._animacao_pulso.addAnimation(entrada)
-        self._animacao_pulso.addAnimation(saida)
-        self._animacao_pulso.setLoopCount(-1)
-        self._animacao_pulso.start()
+        self._luz_ambiente.setVisible(self._motion_enabled)
+        self._luz_ambiente.set_animation_enabled(self._motion_enabled)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -300,27 +295,17 @@ class JanelaProjeto(QDialog):
             luz.setGeometry(self.rect())
 
     def _animar_aba(self, indice: int) -> None:
-        if not hasattr(self, "_abas_principais"):
+        abas = getattr(self, "_abas_principais", None)
+        if abas is None:
             return
-
-        pagina = self._abas_principais.widget(indice)
-        if pagina is None:
-            return
-
-        efeito = pagina.graphicsEffect()
-        if not isinstance(efeito, QGraphicsOpacityEffect):
-            efeito = QGraphicsOpacityEffect(pagina)
-            pagina.setGraphicsEffect(efeito)
-
-        efeito.setOpacity(0.35)
-        animacao = QPropertyAnimation(efeito, b"opacity", pagina)
-        animacao.setDuration(180)
-        animacao.setStartValue(0.35)
-        animacao.setEndValue(1.0)
-        animacao.setEasingCurve(QEasingCurve.Type.OutCubic)
-        animacao.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-        self._animacao_aba = animacao
-        self._animar_cartoes(pagina)
+        pagina = abas.widget(indice)
+        if pagina is not None:
+            self._ui_animations.fade(
+                pagina,
+                target_opacity=1.0,
+                duration_ms=180,
+                start_opacity=0.35,
+            )
 
     def _aplicar_sombras_superficies(self, raiz: QWidget) -> None:
         alvos = []
@@ -352,43 +337,6 @@ class JanelaProjeto(QDialog):
         for widget in alvos:
             aplicar_sombra_superficie(widget)
 
-    def _restaurar_sombras_cartoes(self, cartoes) -> None:
-        for cartao in cartoes:
-            if isinstance(cartao.graphicsEffect(), QGraphicsOpacityEffect):
-                cartao.setGraphicsEffect(None)
-            aplicar_sombra_superficie(cartao)
-
-    def _animar_cartoes(self, pagina: QWidget) -> None:
-        cartoes = pagina.findChildren(QGroupBox)
-        if not cartoes:
-            return
-
-        sequencia = QSequentialAnimationGroup(self)
-        for cartao in cartoes:
-            efeito = cartao.graphicsEffect()
-            if not isinstance(efeito, QGraphicsOpacityEffect):
-                efeito = QGraphicsOpacityEffect(cartao)
-                cartao.setGraphicsEffect(efeito)
-
-            efeito.setOpacity(0.2)
-            entrada = QPropertyAnimation(efeito, b"opacity", cartao)
-            entrada.setDuration(170)
-            entrada.setStartValue(0.2)
-            entrada.setEndValue(1.0)
-            entrada.setEasingCurve(QEasingCurve.Type.OutCubic)
-            pausa = QPropertyAnimation(efeito, b"opacity", cartao)
-            pausa.setDuration(45)
-            pausa.setStartValue(1.0)
-            pausa.setEndValue(1.0)
-            sequencia.addAnimation(entrada)
-            sequencia.addAnimation(pausa)
-
-        sequencia.finished.connect(
-            lambda cartoes=tuple(cartoes): self._restaurar_sombras_cartoes(cartoes)
-        )
-        sequencia.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-        self._animacao_cartoes = sequencia
-
     def _icone_lock_layout(self, bloqueado: bool):
         return criar_icone_estelar("lock" if bloqueado else "unlock")
 
@@ -412,6 +360,9 @@ class JanelaProjeto(QDialog):
 
         self.arquivo = ""
         self.settings = QSettings()
+        self._motion_enabled = movimento_habilitado(self.settings)
+        self._ui_animations = AnimacoesUI(self, enabled=self._motion_enabled)
+        self._validation_states = {}
         self._restaurando_estado = True
         self.ultimo_projeto_gerado = None
         self._preview_dados = {
@@ -615,7 +566,32 @@ class JanelaProjeto(QDialog):
         self.setLayout(layout_principal)
         self._aplicar_sombras_superficies(self)
         self._iniciar_animacoes_ambiente()
-        QTimer.singleShot(0, lambda: self._animar_cartoes(hub))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._motion_enabled:
+            QTimer.singleShot(0, lambda: self._ui_animations.fade_window(self))
+
+    def hideEvent(self, event):
+        self._ui_animations.stop_all()
+        luz = getattr(self, "_luz_ambiente", None)
+        if luz is not None:
+            luz._timer.stop()
+        super().hideEvent(event)
+
+    def done(self, result):
+        self._ui_animations.stop_all()
+        luz = getattr(self, "_luz_ambiente", None)
+        if luz is not None:
+            luz._timer.stop()
+        super().done(result)
+
+    def closeEvent(self, event):
+        self._ui_animations.stop_all()
+        luz = getattr(self, "_luz_ambiente", None)
+        if luz is not None:
+            luz._timer.stop()
+        super().closeEvent(event)
 
 
 
@@ -1083,6 +1059,13 @@ class JanelaProjeto(QDialog):
             botao.setIcon(icon)
             botao.setIconSize(QSize(16, 16))
             botao.setToolTip("Layout bloqueado" if self._layout_locked[chave] else "Layout desbloqueado")
+            if self._motion_enabled and botao.isVisible():
+                self._ui_animations.fade(
+                    botao,
+                    target_opacity=1.0,
+                    duration_ms=130,
+                    start_opacity=0.6,
+                )
         self._desenhar_retangulos()
 
     def _alterar_estilo_mapa(self, _indice: int) -> None:
@@ -1325,12 +1308,14 @@ class JanelaProjeto(QDialog):
         layout.addWidget(barra_acoes)
 
     def _alternar_modo_avancado(self, ativado: bool) -> None:
-        if hasattr(self, "campo_sigla_projetista"):
-            self.campo_sigla_projetista.setVisible(ativado)
-        if hasattr(self, "campo_sigla_verificacao"):
-            self.campo_sigla_verificacao.setVisible(ativado)
-        if hasattr(self, "campo_preset"):
-            self.campo_preset.setVisible(not ativado)
+        for nome_campo, visivel in (
+            ("campo_sigla_projetista", ativado),
+            ("campo_sigla_verificacao", ativado),
+            ("campo_preset", not ativado),
+        ):
+            campo = getattr(self, nome_campo, None)
+            if campo is not None and self._ui_animations.will_be_visible(campo) != visivel:
+                self._ui_animations.set_visible(campo, visivel, duration_ms=150)
         if hasattr(self, "btn_ok"):
             self._atualizar_estado_botao()
 
@@ -1445,7 +1430,19 @@ class JanelaProjeto(QDialog):
         self._definir_estado_validacao(self.cmb_obra, not projeto_ok)
         self._definir_estado_validacao(self.btn_kml, not arquivo_ok)
         self._definir_estado_validacao(self.txt_pasta_projeto, not destino_ok)
+        estado_anterior_botao = self.btn_ok.isEnabled()
         self.btn_ok.setEnabled(botao_liberado)
+        if (
+            estado_anterior_botao != botao_liberado
+            and self._motion_enabled
+            and self.btn_ok.isVisible()
+        ):
+            self._ui_animations.fade(
+                self.btn_ok,
+                target_opacity=1.0,
+                duration_ms=170,
+                start_opacity=0.72,
+            )
         self.btn_ok.setText("Gerar projeto")
         self.btn_ok.setIcon(
             criar_icone_estelar(
@@ -1490,19 +1487,40 @@ class JanelaProjeto(QDialog):
         concluidos = 0
         for chave, concluido in estados.items():
             linha, indicador, rotulo = self._itens_validacao[chave]
+            estado_anterior = self._validation_states.get(chave)
+            self._validation_states[chave] = bool(concluido)
             estado = "ready" if concluido else "pending"
             linha.setProperty("state", estado)
             indicador.setProperty("state", estado)
             rotulo.setProperty("state", estado)
             indicador.setText("✓" if concluido else "–")
             indicador.setToolTip("Concluído" if concluido else "Pendente")
+            if (
+                estado_anterior is not None
+                and estado_anterior != bool(concluido)
+                and self._motion_enabled
+            ):
+                self._ui_animations.fade(
+                    indicador,
+                    target_opacity=1.0,
+                    duration_ms=160,
+                    start_opacity=0.35,
+                )
             for widget in (linha, indicador, rotulo):
                 widget.style().unpolish(widget)
                 widget.style().polish(widget)
             concluidos += int(concluido)
 
         percentual = round(concluidos / len(estados) * 100)
-        self.lbl_percentual_validacao.setText(f"{percentual}%")
+        texto_percentual = f"{percentual}%"
+        if self.lbl_percentual_validacao.text() != texto_percentual and self._motion_enabled:
+            self._ui_animations.fade(
+                self.lbl_percentual_validacao,
+                target_opacity=1.0,
+                duration_ms=150,
+                start_opacity=0.55,
+            )
+        self.lbl_percentual_validacao.setText(texto_percentual)
         self.lbl_percentual_validacao.setAccessibleName(
             f"Validação concluída em {percentual}%"
         )
