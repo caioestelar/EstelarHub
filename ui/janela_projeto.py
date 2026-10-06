@@ -59,7 +59,7 @@ from ..core import preview as core_preview
 from ..core import projeto as core_projeto
 from ..core import variaveis as core_variaveis
 from ..utils import constants, helpers
-from .cursor_theme import cursor_estelar
+from .cursor_theme import cursor_estelar, cursor_estelar_mapa
 from .surface_effects import aplicar_sombra_superficie
 import os
 
@@ -432,6 +432,8 @@ class JanelaProjeto(QDialog):
             Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint
         )
         self._cursor_estelar = cursor_estelar()
+        self._cursor_estelar_mapa_livre = cursor_estelar_mapa()
+        self._cursor_estelar_mapa_arrastando = cursor_estelar_mapa(arrastando=True)
         self.setCursor(self._cursor_estelar)
         tela = QApplication.primaryScreen()
         if tela is None:

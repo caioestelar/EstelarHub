@@ -257,9 +257,16 @@ class PreviewLabelPanSync(QObject):
             return event.position().toPoint()
         return event.pos()
 
+    def _atualizar_cursor_pan(self, ativo: bool, ponteiro_no_mapa: bool = True) -> None:
+        ferramenta = getattr(self.dlg, "_preview_tool", None)
+        if ferramenta is not None:
+            ferramenta.set_pan_com_scroll(ativo, ponteiro_no_mapa)
+
     def eventFilter(self, watched, event):
         if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.MiddleButton:
             self.pan_start = self._event_position(event)
+            self._atualizar_cursor_pan(True)
+            QTimer.singleShot(0, lambda: self._atualizar_cursor_pan(True))
             self.label_positions = {
                 nome: label.pos()
                 for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items()
@@ -269,13 +276,20 @@ class PreviewLabelPanSync(QObject):
             and self.pan_start is not None
             and event.buttons() & Qt.MouseButton.MiddleButton
         ):
+            self._atualizar_cursor_pan(True)
             deslocamento = self._event_position(event) - self.pan_start
             for nome, label in getattr(self.dlg, "_rotulos_preview", {}).items():
                 posicao_inicial = self.label_positions.get(nome)
                 if posicao_inicial is not None:
                     label.move(posicao_inicial + deslocamento)
         elif event.type() == QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.MiddleButton:
+            ponteiro_no_mapa = watched.rect().contains(self._event_position(event))
             self.pan_start = None
+            self._atualizar_cursor_pan(False, ponteiro_no_mapa)
+            QTimer.singleShot(
+                0,
+                lambda: self._atualizar_cursor_pan(False, ponteiro_no_mapa),
+            )
             QTimer.singleShot(0, lambda: _reposicionar_rotulos_preview(self.dlg))
         return False
 
@@ -316,17 +330,34 @@ class PreviewMoveTool(QgsMapToolIdentify):
         super().__init__(canvas)
         self.dlg = dlg
         self._arrastando = False
+        self._pan_com_scroll = False
         self._centro_original = None
         self._coordenada_original = None
         self._centros_originais = {}
 
     def setCursor(self, cursor):
-        if cursor == Qt.CursorShape.ArrowCursor:
-            cursor = getattr(self.dlg, "_cursor_estelar", cursor)
+        cursores_mapa = {
+            Qt.CursorShape.ArrowCursor: "_cursor_estelar",
+            Qt.CursorShape.OpenHandCursor: "_cursor_estelar_mapa_livre",
+            Qt.CursorShape.ClosedHandCursor: "_cursor_estelar_mapa_arrastando",
+        }
+        atributo_cursor = cursores_mapa.get(cursor)
+        if atributo_cursor is not None:
+            cursor = getattr(self.dlg, atributo_cursor, cursor)
         try:
             self.canvas().setCursor(cursor)
         except Exception:
             pass
+
+    def set_pan_com_scroll(self, ativo: bool, ponteiro_no_mapa: bool = True) -> None:
+        """Sincroniza o cursor com o pan do canvas pelo botão central."""
+        self._pan_com_scroll = bool(ativo)
+        if self._pan_com_scroll or self._arrastando:
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        elif ponteiro_no_mapa:
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+        else:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def _pixel_para_coordenada(self, pos):
         canvas = self.canvas()
@@ -362,6 +393,9 @@ class PreviewMoveTool(QgsMapToolIdentify):
         self._centros_originais = dict(getattr(self.dlg, "_preview_centros", {}))
 
     def canvasMoveEvent(self, event):
+        if self._pan_com_scroll:
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            return
         if not self._arrastando:
             self.setCursor(Qt.CursorShape.OpenHandCursor)
             return
@@ -393,10 +427,15 @@ class PreviewMoveTool(QgsMapToolIdentify):
             self._arrastando = False
             self._centro_original = None
             self._coordenada_original = None
-            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            cursor = (
+                Qt.CursorShape.ClosedHandCursor
+                if self._pan_com_scroll
+                else Qt.CursorShape.OpenHandCursor
+            )
+            self.setCursor(cursor)
 
     def canvasLeaveEvent(self, event):
-        if not self._arrastando:
+        if not self._arrastando and not self._pan_com_scroll:
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
 
