@@ -251,6 +251,10 @@ class PreviewLabelPanSync(QObject):
         self.pan_start = None
         self.label_positions = {}
         self._cursor_override_ativo = False
+        self._cursor_frame_index = 0
+        self._cursor_pan_timer = QTimer(self)
+        self._cursor_pan_timer.setInterval(20)
+        self._cursor_pan_timer.timeout.connect(self._avancar_frame_cursor_pan)
 
     @staticmethod
     def _event_position(event):
@@ -258,11 +262,37 @@ class PreviewLabelPanSync(QObject):
             return event.position().toPoint()
         return event.pos()
 
+    def _avancar_frame_cursor_pan(self) -> None:
+        frames = getattr(self.dlg, "_cursor_estelar_transicao_pan", ())
+        if not frames:
+            self._cursor_pan_timer.stop()
+            return
+
+        self._cursor_frame_index = min(
+            self._cursor_frame_index + 1,
+            len(frames) - 1,
+        )
+        QApplication.changeOverrideCursor(frames[self._cursor_frame_index])
+        if self._cursor_frame_index == len(frames) - 1:
+            self._cursor_pan_timer.stop()
+
     def _atualizar_cursor_pan(self, ativo: bool, ponteiro_no_mapa: bool = True) -> None:
         ferramenta = getattr(self.dlg, "_preview_tool", None)
         if ativo:
             if ferramenta is not None:
                 ferramenta.set_pan_com_scroll(True, ponteiro_no_mapa)
+
+            frames = getattr(self.dlg, "_cursor_estelar_transicao_pan", ())
+            if frames:
+                if not self._cursor_override_ativo:
+                    self._cursor_frame_index = 0
+                    QApplication.setOverrideCursor(frames[0])
+                    self._cursor_override_ativo = True
+                    self._cursor_pan_timer.start()
+                elif not self._cursor_pan_timer.isActive():
+                    QApplication.changeOverrideCursor(frames[-1])
+                return
+
             cursor = getattr(self.dlg, "_cursor_estelar_mover_mapa", None)
             if cursor is not None:
                 if self._cursor_override_ativo:
@@ -272,6 +302,7 @@ class PreviewLabelPanSync(QObject):
                     self._cursor_override_ativo = True
             return
 
+        self._cursor_pan_timer.stop()
         if self._cursor_override_ativo:
             QApplication.restoreOverrideCursor()
             self._cursor_override_ativo = False
@@ -284,6 +315,7 @@ class PreviewLabelPanSync(QObject):
     def eventFilter(self, watched, event):
         if watched is self.dlg and event.type() == QEvent.Type.Close:
             self.pan_start = None
+            self._cursor_pan_timer.stop()
             self._atualizar_cursor_pan(False, False)
         elif event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.MiddleButton:
             self.pan_start = self._event_position(event)

@@ -63,6 +63,7 @@ from .cursor_theme import (
     cursor_estelar,
     cursor_estelar_mapa,
     cursor_estelar_mover_mapa,
+    cursor_estelar_transicao_pan,
 )
 from .surface_effects import aplicar_sombra_superficie
 import os
@@ -439,6 +440,7 @@ class JanelaProjeto(QDialog):
         self._cursor_estelar_mapa_livre = cursor_estelar_mapa()
         self._cursor_estelar_mapa_arrastando = cursor_estelar_mapa(arrastando=True)
         self._cursor_estelar_mover_mapa = cursor_estelar_mover_mapa()
+        self._cursor_estelar_transicao_pan = cursor_estelar_transicao_pan()
         self.setCursor(self._cursor_estelar)
         tela = QApplication.primaryScreen()
         if tela is None:

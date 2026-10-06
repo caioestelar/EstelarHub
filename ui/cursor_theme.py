@@ -15,6 +15,9 @@ _MAP_POINTER_SIZE = QSize(27, 27)
 _MAP_BADGE_POSITION = (23, 23, 12, 12)
 _PAN_CURSOR_SIZE = QSize(32, 32)
 _PAN_CURSOR_HOTSPOT = QPoint(16, 16)
+_PAN_TRANSITION_SIZE = QSize(40, 40)
+_PAN_TRANSITION_HOTSPOT = QPoint(20, 20)
+_PAN_TRANSITION_FRAME_COUNT = 8
 _PAN_CURSOR_DARK = QColor("#111112")
 _PAN_CURSOR_FILL = QColor("#58ACC3")
 _PAN_CURSOR_ACCENT = QColor("#F36A26")
@@ -24,6 +27,7 @@ _CACHED_CURSOR = None
 _CACHED_CURSOR_IMAGE = None
 _CACHED_MAP_CURSORS = {}
 _CACHED_PAN_CURSOR = None
+_CACHED_PAN_TRANSITION = None
 
 
 def _is_connected_white_background(color: QColor) -> bool:
@@ -263,3 +267,69 @@ def cursor_estelar_mover_mapa() -> QCursor:
         _PAN_CURSOR_HOTSPOT.y(),
     )
     return QCursor(_CACHED_PAN_CURSOR)
+
+
+def cursor_estelar_transicao_pan() -> tuple[QCursor, ...]:
+    """Build cached frames that morph the pointer into the pan glyph."""
+    global _CACHED_PAN_TRANSITION
+    if _CACHED_PAN_TRANSITION is not None:
+        return tuple(QCursor(frame) for frame in _CACHED_PAN_TRANSITION)
+
+    pointer = QPixmap.fromImage(_imagem_estelar()).scaled(
+        _CURSOR_SIZE,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    glyph = cursor_estelar_mover_mapa().pixmap()
+    frames = []
+
+    for frame_index in range(_PAN_TRANSITION_FRAME_COUNT):
+        raw_progress = frame_index / (_PAN_TRANSITION_FRAME_COUNT - 1)
+        progress = raw_progress * raw_progress * (3.0 - 2.0 * raw_progress)
+        frame_pixmap = QPixmap(_PAN_TRANSITION_SIZE)
+        frame_pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(frame_pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        pointer_size = max(8, round(_CURSOR_SIZE.width() * (1.0 - 0.4 * progress)))
+        pointer_frame = pointer.scaled(
+            QSize(pointer_size, pointer_size),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        hotspot = QPoint(
+            round(_CURSOR_HOTSPOT.x() * pointer_frame.width() / max(pointer.width(), 1)),
+            round(_CURSOR_HOTSPOT.y() * pointer_frame.height() / max(pointer.height(), 1)),
+        )
+        painter.setOpacity(1.0 - progress)
+        painter.drawPixmap(
+            _PAN_TRANSITION_HOTSPOT.x() - hotspot.x(),
+            _PAN_TRANSITION_HOTSPOT.y() - hotspot.y(),
+            pointer_frame,
+        )
+
+        glyph_size = max(1, round(_PAN_CURSOR_SIZE.width() * progress))
+        glyph_frame = glyph.scaled(
+            QSize(glyph_size, glyph_size),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        painter.setOpacity(progress)
+        painter.drawPixmap(
+            _PAN_TRANSITION_HOTSPOT.x() - glyph_frame.width() // 2,
+            _PAN_TRANSITION_HOTSPOT.y() - glyph_frame.height() // 2,
+            glyph_frame,
+        )
+        painter.end()
+
+        frames.append(
+            QCursor(
+                frame_pixmap,
+                _PAN_TRANSITION_HOTSPOT.x(),
+                _PAN_TRANSITION_HOTSPOT.y(),
+            )
+        )
+
+    _CACHED_PAN_TRANSITION = tuple(frames)
+    return tuple(QCursor(frame) for frame in _CACHED_PAN_TRANSITION)
