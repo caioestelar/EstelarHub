@@ -20,7 +20,7 @@ _PAN_TRANSITION_HOTSPOT = QPoint(20, 20)
 _PAN_TRANSITION_FRAME_COUNT = 8
 _PAN_CURSOR_DARK = QColor("#111112")
 _PAN_CURSOR_FILL = QColor("#58ACC3")
-_PAN_CURSOR_ACCENT = QColor("#F36A26")
+_PAN_CURSOR_ACCENT = QColor("#FFFFFF")
 _BACKGROUND_CHANNEL_MIN = 232
 _BACKGROUND_CHANNEL_SPREAD_MAX = 30
 _CACHED_CURSOR = None
@@ -188,10 +188,10 @@ def cursor_estelar_mapa(arrastando: bool = False) -> QCursor:
     painter.drawEllipse(x, y, width, height)
 
     if estado:
-        painter.setPen(QPen(QColor("#F36A26"), 1.5))
-        painter.setBrush(QColor("#F36A26"))
+        painter.setPen(QPen(QColor("#1783A5"), 1.5))
+        painter.setBrush(QColor("#1783A5"))
         painter.drawEllipse(x + 1, y + 1, width - 2, height - 2)
-        painter.setPen(QPen(QColor("#FFF4EC"), 1.5))
+        painter.setPen(QPen(QColor("#D9F6FF"), 1.5))
         painter.drawLine(x + 4, y + 6, x + 8, y + 6)
     else:
         painter.setPen(QPen(QColor("#1783A5"), 2))

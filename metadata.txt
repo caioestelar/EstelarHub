@@ -3,7 +3,7 @@ name=EstelarMapTools
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 description=Automatiza a padronização dos desenhos (mapa de localização, layouts e camadas) da Estelar Engenharia.
-version=1.4.0
+version=1.5.0
 author=CaioChiarello/ESTELAR ENGENHARIA ASSOCIADOS
 email=caio@estelarengenharia.com.br
 
